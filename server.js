@@ -36,7 +36,7 @@ function normStats(s) {
   return {
     pts: num(s.pts, 0, 1e9), bolts: num(s.bolts, 0, 1e9), set: num(s.set, 0, 107), best: num(s.best, 0, 36e5),
     streak: num(s.streak, 0, 9999), last: clean(s.last, 10), days: num(s.days, 0, 99999),
-    day: { d: clean(d.d, 10), polish: num(d.polish, 0, 99), coffee: num(d.coffee, 0, 99), laps: num(d.laps, 0, 999), quiz: num(d.quiz, 0, 1), wish: num(d.wish, 0, 1) },
+    day: { d: clean(d.d, 10), polish: num(d.polish, 0, 99), coffee: num(d.coffee, 0, 99), laps: num(d.laps, 0, 999), quiz: num(d.quiz, 0, 1), wish: num(d.wish, 0, 1), zen: num(d.zen, 0, 1) },
   };
 }
 
@@ -56,7 +56,7 @@ const online = new Map(); // ws -> client
 
 function send(ws, obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 function broadcast(obj, except) { const s = JSON.stringify(obj); for (const ws of online.keys()) if (ws !== except && ws.readyState === 1) ws.send(s); }
-function peerOf(c) { return { id: c.id, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, e: c.e, et: c.et }; }
+function peerOf(c) { return { id: c.id, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, s: c.s || 0, e: c.e, et: c.et }; }
 
 function boardPayload() {
   const players = Object.entries(store.players).map(([tok, p]) => ({
@@ -106,7 +106,7 @@ wss.on('connection', ws => {
     if (!c.joined) return;
 
     if (m.type === 'state') {
-      c.x = num(m.x, 0, 2400); c.y = num(m.y, 0, 1500); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0;
+      c.x = num(m.x, 0, 2400); c.y = num(m.y, 0, 1500); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0; c.s = m.s ? 1 : 0;
       if (typeof m.e === 'string') { c.e = clean(m.e, 4); c.et = num(m.et, 0, 9e15); }
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
     } else if (m.type === 'profile') {
