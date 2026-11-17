@@ -1,0 +1,1 @@
+{"name":"mb-world","version":"1.0.0","description":"MB World — 서비스매니저 라운지 (3D 실시간 공간)","main":"server.js","scripts":{"start":"node server.js"},"engines":{"node":">=18"},"dependencies":{"ws":"^8.18.0"}}
