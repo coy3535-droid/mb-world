@@ -43,12 +43,14 @@ function normStats(s) {
 // ---------- http ----------
 const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
-  if (req.url.split('?')[0] === '/bgm.mp3') {
-    const f = path.join(__dirname, 'bgm.mp3');
+  const STATIC = { '/bgm.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json' };
+  const urlPath = req.url.split('?')[0];
+  if (STATIC[urlPath]) {
+    const f = path.join(__dirname, urlPath.slice(1));
     fs.stat(f, (err, st) => {
       if (err) { res.writeHead(404); res.end(); return; }
       const range = req.headers.range;
-      const base = { 'content-type': 'audio/mpeg', 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=86400' };
+      const base = { 'content-type': STATIC[urlPath], 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=3600' };
       if (range) {
         const m = /bytes=(\d*)-(\d*)/.exec(range) || [];
         let start = m[1] ? parseInt(m[1], 10) : 0, end = m[2] ? parseInt(m[2], 10) : st.size - 1;
