@@ -34,7 +34,7 @@ function normStats(s) {
   if (!s || typeof s !== 'object') return null;
   const d = s.day && typeof s.day === 'object' ? s.day : {};
   return {
-    pts: num(s.pts, 0, 1e9), bolts: num(s.bolts, 0, 1e9), set: num(s.set, 0, 107), best: num(s.best, 0, 36e5),
+    pts: num(s.pts, 0, 1e9), bolts: num(s.bolts, 0, 1e9), set: num(s.set, 0, 107), best: num(s.best, 0, 36e5), race: num(s.race, 0, 36e5),
     streak: num(s.streak, 0, 9999), last: clean(s.last, 10), days: num(s.days, 0, 99999),
     day: { d: clean(d.d, 10), polish: num(d.polish, 0, 99), coffee: num(d.coffee, 0, 99), laps: num(d.laps, 0, 999), quiz: num(d.quiz, 0, 1), wish: num(d.wish, 0, 1), zen: num(d.zen, 0, 1) },
   };
@@ -75,12 +75,12 @@ const online = new Map(); // ws -> client
 
 function send(ws, obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 function broadcast(obj, except) { const s = JSON.stringify(obj); for (const ws of online.keys()) if (ws !== except && ws.readyState === 1) ws.send(s); }
-function peerOf(c) { return { id: c.id, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, s: c.s || 0, e: c.e, et: c.et }; }
+function peerOf(c) { return { id: c.id, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, s: c.s || 0, v: c.v || 0, ca: c.ca || 0, e: c.e, et: c.et }; }
 
 function boardPayload() {
   const players = Object.entries(store.players).map(([tok, p]) => ({
     id: [...online.values()].find(c => c.token === tok)?.id || 'x' + tok.slice(0, 6),
-    n: p.n, p: p.p, c: p.c, pts: p.st.pts, bolts: p.st.bolts, best: p.st.best, streak: p.st.streak,
+    n: p.n, p: p.p, c: p.c, pts: p.st.pts, bolts: p.st.bolts, best: p.st.race || 0, streak: p.st.streak,
   }));
   const totalBolts = players.reduce((a, p) => a + p.bolts, 0);
   const top = [...players].sort((a, b) => b.pts - a.pts).slice(0, 10);
@@ -125,7 +125,7 @@ wss.on('connection', ws => {
     if (!c.joined) return;
 
     if (m.type === 'state') {
-      c.x = num(m.x, 0, 2400); c.y = num(m.y, 0, 1500); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0; c.s = m.s ? 1 : 0;
+      c.x = num(m.x, 0, 2400); c.y = num(m.y, 0, 1500); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0; c.s = m.s ? 1 : 0; c.v = m.v ? 1 : 0; c.ca = Math.max(-1e4, Math.min(1e4, +m.ca || 0));
       if (typeof m.e === 'string') { c.e = clean(m.e, 4); c.et = num(m.et, 0, 9e15); }
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
     } else if (m.type === 'profile') {
