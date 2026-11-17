@@ -43,6 +43,23 @@ function normStats(s) {
 // ---------- http ----------
 const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
+  if (req.url.split('?')[0] === '/bgm.mp3') {
+    const f = path.join(__dirname, 'bgm.mp3');
+    fs.stat(f, (err, st) => {
+      if (err) { res.writeHead(404); res.end(); return; }
+      const range = req.headers.range;
+      const base = { 'content-type': 'audio/mpeg', 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=86400' };
+      if (range) {
+        const m = /bytes=(\d*)-(\d*)/.exec(range) || [];
+        let start = m[1] ? parseInt(m[1], 10) : 0, end = m[2] ? parseInt(m[2], 10) : st.size - 1;
+        if (isNaN(start) || start >= st.size) { res.writeHead(416, { 'content-range': `bytes */${st.size}` }); res.end(); return; }
+        end = Math.min(end, st.size - 1);
+        res.writeHead(206, { ...base, 'content-range': `bytes ${start}-${end}/${st.size}`, 'content-length': end - start + 1 });
+        fs.createReadStream(f, { start, end }).pipe(res);
+      } else { res.writeHead(200, { ...base, 'content-length': st.size }); fs.createReadStream(f).pipe(res); }
+    });
+    return;
+  }
   fs.readFile(HTML_PATH, (err, html) => {
     if (err) { res.writeHead(500); res.end('index.html not found'); return; }
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
