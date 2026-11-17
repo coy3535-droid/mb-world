@@ -8,7 +8,7 @@
 <title>MB World — 서비스매니저 라운지</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e0f12;--panel:#16181d;--line:#2a2d35;--txt:#e9ebef;--sub:#9aa0aa;--acc:#00adef;--sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px)}
+:root{--H:100svh;--T:0px;--bar:62px;--bg:#0e0f12;--panel:#16181d;--line:#2a2d35;--txt:#e9ebef;--sub:#9aa0aa;--acc:#00adef;--inapp:0px;--sb:calc(env(safe-area-inset-bottom,0px) + var(--inapp));--st:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Noto Sans KR',system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
 #stage{position:fixed;inset:0 320px 0 0;overflow:hidden}
@@ -106,10 +106,11 @@ button.chip:hover{border-color:rgba(255,255,255,.25)}
 .pt-table{font-size:12px;color:var(--sub);line-height:1.9}
 #loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--sub);font-size:13px;pointer-events:none}
 @media (max-width:760px){
-  #stage{inset:0 0 calc(62px + var(--sb)) 0}
-  #side{left:0;width:auto;top:auto;height:52%;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;bottom:calc(62px + var(--sb));padding-bottom:0;transform:translateY(110%);transition:transform .25s;z-index:4}
+  :root{--vis:min(var(--H),100svh);--barH:calc(var(--bar) + var(--sb))}
+  #stage{inset:auto;top:var(--T);left:0;right:0;height:calc(var(--vis) - var(--barH))}
+  #side{left:0;right:0;width:auto;bottom:auto;top:calc(var(--T) + (var(--vis) - var(--barH)) * .42);height:calc((var(--vis) - var(--barH)) * .58);border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding-bottom:0;transform:translateY(130%);transition:transform .25s;z-index:4}
   #side.open{transform:none}
-  #cf{left:0;width:auto;padding:8px 10px calc(8px + var(--sb))}
+  #cf{left:0;right:0;width:auto;bottom:auto;top:calc(var(--T) + var(--vis) - var(--barH));height:var(--barH);padding:8px 10px calc(8px + var(--sb))}
   #cf #sheetBtn{display:grid;cursor:pointer;font-size:20px;width:42px;display:grid;place-items:center;background:#262a33;border-radius:10px;position:relative}
   #sheetBtn b{position:absolute;top:-3px;right:-3px;background:#e94b3c;color:#fff;font-size:10px;border-radius:999px;padding:0 5px;display:none}
   #mini,#help{display:none}
@@ -218,6 +219,12 @@ function hits(x,y,r=R){
   return false;
 }
 const zoneAt=(x,y)=>ZONES.find(z=>x>=z.x&&x<=z.x+z.w&&y>=z.y&&y<=z.y+z.h)||null;
+
+/* ---------- visible viewport (in-app browsers, keyboard) ---------- */
+function syncVV(){const v=window.visualViewport,r=document.documentElement.style;r.setProperty('--H',Math.round(v?v.height:innerHeight)+'px');r.setProperty('--T',Math.round(v?v.offsetTop:0)+'px');}
+if(/Teams|KAKAOTALK|Line\/|Instagram|FBAN|FBAV|NAVER|DaumApps|; wv\)/i.test(navigator.userAgent))document.documentElement.style.setProperty('--inapp','30px');
+syncVV();addEventListener('resize',syncVV);if(window.visualViewport){visualViewport.addEventListener('resize',syncVV);visualViewport.addEventListener('scroll',syncVV);}
+addEventListener('orientationchange',()=>setTimeout(syncVV,300));
 
 /* ---------- three setup ---------- */
 const cv=$('#cv');
