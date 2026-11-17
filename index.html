@@ -478,7 +478,8 @@ function loadBakedHall(proc){
   if(!THREE.GLTFLoader)return;
   const tl=new THREE.TextureLoader();const lmTex=u=>{const t=tl.load(u);t.flipY=false;t.encoding=THREE.sRGBEncoding;return t;};
   fetch('hall_bake.json').then(r=>r.ok?r.json():Promise.reject()).then(info=>{
-    new THREE.GLTFLoader().load('hall.glb',gltf=>{
+    const getGlb=()=>fetch('hall.glb').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();}).catch(()=>new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='hall_glb.js';sc.onload=()=>{try{const bin=atob(window.HALL_GLB_B64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);res(u.buffer);}catch(e){rej(e);}};sc.onerror=rej;document.head.appendChild(sc);}));
+    getGlb().then(buf=>new THREE.GLTFLoader().parse(buf,'',gltf=>{
       const lmP=lmTex('hall_props_lm.jpg'),lmF=lmTex('hall_floor_lm.jpg');
       const wood=woodTex('#4e3424',[1,1]);
       const COL={darkwood:'#3a2619',midwood:'#5c3d29',podium2:'#2a2d33',podium:'#15171b',cushion:'#3a3e45',cushion2:'#4a4f57'};
@@ -488,7 +489,7 @@ function loadBakedHall(proc){
       scene.add(gltf.scene);
       for(const c of [...proc.children]){if(c.userData.keep){scene.attach(c);continue;}proc.remove(c);const i=FADE.indexOf(c);if(i>=0)FADE.splice(i,1);}
       scene.remove(proc);
-    },undefined,()=>{});
+    },()=>{})).catch(()=>{});
   }).catch(()=>{});}
 function hallBuildProc(z){
   const T=14,HH=6.2,dark=M('#3a2619',{flatShading:false,roughness:.7}),mid=M('#5c3d29',{flatShading:false,roughness:.7}),gold=M('#d9b26a',{roughness:.3,metalness:.8,flatShading:false});
