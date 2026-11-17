@@ -43,7 +43,7 @@ function normStats(s) {
 // ---------- http ----------
 const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
-  const STATIC = { '/bgm.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json', '/newcar.jpg': 'image/jpeg' };
+  const STATIC = { '/bgm.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json' };
   const urlPath = req.url.split('?')[0];
   if (STATIC[urlPath]) {
     const f = path.join(__dirname, urlPath.slice(1));
