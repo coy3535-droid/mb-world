@@ -63,25 +63,39 @@ function origin(req) { const proto = (req.headers['x-forwarded-proto'] || 'http'
 const EXPIRED = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MB World</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0f12;color:#e9ebef;font-family:system-ui,'Noto Sans KR',sans-serif;text-align:center;padding:24px}b{color:#00adef}.c{max-width:360px}h1{letter-spacing:.2em;font-size:20px}p{color:#9aa0aa;line-height:1.7;font-size:14px}</style></head>
 <body><div class="c"><h1><b>MB</b> WORLD</h1><p>이 링크는 사용할 수 없어요.<br>MB World는 파일럿 기간 동안 <b>오늘 받은 초대 링크</b>로만 들어올 수 있어요.<br>담당자에게 오늘의 링크를 받아주세요.</p></div></body></html>`;
-function adminPage(req) {
+let QR = null; try { QR = require('qrcode'); } catch (e) {}
+async function adminPage(req) {
   const day = kstDay(), link = origin(req) + '/?k=' + todayToken(day), n = [...online.values()].filter(c => c.joined).length;
+  const msg = `📢 오늘의 MB World 입장 링크예요 (오늘 밤 12시까지)\n👉 ${link}`;
+  let qr = '';
+  try { if (QR) qr = await QR.toString(link, { type: 'svg', margin: 1, width: 200, color: { dark: '#000000', light: '#ffffff' } }); } catch (e) {}
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MB World 관리자</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>body{margin:0;background:#0e0f12;color:#e9ebef;font-family:system-ui,'Noto Sans KR',sans-serif;padding:24px;display:flex;justify-content:center}.c{width:min(460px,100%)}h1{font-size:18px;letter-spacing:.15em}h1 b{color:#00adef}
-.box{background:#16181d;border:1px solid #2a2d35;border-radius:16px;padding:18px;margin-top:14px}.l{font-size:12px;color:#9aa0aa;margin-bottom:6px}.u{word-break:break-all;background:#0f1115;border:1px solid #2a2d35;border-radius:10px;padding:12px;font-size:14px;user-select:all;white-space:pre-line}
-button{all:unset;cursor:pointer;display:block;text-align:center;background:#00adef;color:#001018;font-weight:700;padding:12px;border-radius:12px;margin-top:10px;width:100%;box-sizing:border-box}button.g{background:transparent;color:#9aa0aa;border:1px solid #2a2d35}
-#qr{background:#fff;border-radius:12px;padding:12px;width:max-content;margin:12px auto 0}.s{font-size:12px;color:#9aa0aa;line-height:1.7;margin-top:10px}</style></head>
+.box{background:#16181d;border:1px solid #2a2d35;border-radius:16px;padding:18px;margin-top:14px}.l{font-size:12px;color:#9aa0aa;margin-bottom:6px}
+textarea{width:100%;box-sizing:border-box;background:#0f1115;border:1px solid #2a2d35;border-radius:10px;padding:12px;font:inherit;font-size:14px;color:#e9ebef;resize:none;-webkit-user-select:text;user-select:text}
+button{all:unset;cursor:pointer;display:block;text-align:center;background:#00adef;color:#001018;font-weight:700;padding:12px;border-radius:12px;margin-top:10px;width:100%;box-sizing:border-box}button.g{background:transparent;color:#cfd3da;border:1px solid #2a2d35}
+.qr{background:#fff;border-radius:12px;padding:10px;width:200px;margin:14px auto 0}.qr svg{display:block;width:100%;height:auto}.s{font-size:12px;color:#9aa0aa;line-height:1.7;margin-top:10px}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#00adef;color:#001018;font-weight:700;padding:10px 18px;border-radius:999px;opacity:0;transition:opacity .3s;pointer-events:none}</style></head>
 <body><div class="c"><h1><b>MB</b> WORLD · 관리자</h1>
-<div class="box"><div class="l">${day} (KST) 오늘의 초대 링크 · 오늘 밤 12시까지 유효</div><div class="u" id="u">${link}</div>
-<button id="cp">링크 복사</button><div id="qr"></div>
+<div class="box"><div class="l">${day} (KST) 오늘의 초대 링크 · 오늘 밤 12시까지 유효</div>
+<textarea id="u" rows="2" readonly>${esc(link)}</textarea>
+<button type="button" data-copy="u">링크 복사</button>
+<button type="button" class="g" id="share">📤 카톡·팀즈로 바로 보내기</button>
+${qr ? `<div class="qr">${qr}</div>` : ''}
 <div class="s">이 링크를 받은 사람만 오늘 하루 들어올 수 있어요. 자정이 지나면 자동으로 막히고, 내일 링크가 새로 만들어져요.<br>현재 접속 중: <b>${n}명</b></div></div>
+<div class="box"><div class="l">카톡·팀즈 공유 문구</div><textarea id="msg" rows="4" readonly>${esc(msg)}</textarea><button type="button" class="g" data-copy="msg">공유 문구 복사</button></div>
 <div class="box"><div class="l">링크가 원치 않는 곳에 퍼졌다면</div><form method="post" action="/admin/rotate?key=${encodeURIComponent(ADMIN_KEY)}" onsubmit="return confirm('오늘 링크를 새로 만들까요? 기존 링크로는 더 이상 들어올 수 없어요.')"><button class="g" type="submit">오늘 링크 새로 만들기</button></form></div>
-<div class="box"><div class="l">카톡·팀즈 공유 문구</div><div class="u" id="msg">📢 오늘의 MB World 입장 링크예요 (오늘 밤 12시까지)\n👉 ${link}</div><button id="cp2" class="g">공유 문구 복사</button></div>
-</div><script>
-new QRCode(document.getElementById('qr'),{text:${JSON.stringify(link)},width:180,height:180});
-const cp=(id,b)=>{const t=document.getElementById(id).innerText.replace(/\\n/g,'\n');navigator.clipboard.writeText(t).then(()=>{b.textContent='복사했어요 ✓';setTimeout(()=>b.textContent=b.dataset.t,1800);}).catch(()=>{b.textContent='길게 눌러 복사하세요';});};
-for(const [b,id] of [['cp','u'],['cp2','msg']]){const el=document.getElementById(b);el.dataset.t=el.textContent;el.onclick=()=>cp(id,el);}
-document.getElementById('msg').innerText=document.getElementById('msg').innerText.replace(/\\n/g,'\n');
+</div><div id="toast"></div><script>
+function toast(t){var e=document.getElementById('toast');e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(function(){e.style.opacity=0},1800);}
+function legacyCopy(el){el.removeAttribute('readonly');el.focus();el.select();el.setSelectionRange(0,99999);var ok=false;try{ok=document.execCommand('copy');}catch(e){}el.setAttribute('readonly','');el.blur();return ok;}
+function copyFrom(id){var el=document.getElementById(id),t=el.value;
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(function(){toast('복사했어요 ✓')},function(){toast(legacyCopy(el)?'복사했어요 ✓':'글자를 길게 눌러 복사해 주세요')});}
+  else toast(legacyCopy(el)?'복사했어요 ✓':'글자를 길게 눌러 복사해 주세요');}
+document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){copyFrom(b.getAttribute('data-copy'))});});
+var sh=document.getElementById('share');
+if(navigator.share){sh.addEventListener('click',function(){navigator.share({title:'MB World 오늘의 입장 링크',text:'📢 오늘의 MB World 입장 링크예요 (오늘 밤 12시까지)',url:document.getElementById('u').value}).catch(function(){});});}
+else{sh.textContent='📤 공유 문구 복사';sh.addEventListener('click',function(){copyFrom('msg')});}
 </script></body></html>`;
 }
 
@@ -95,7 +109,7 @@ const server = http.createServer((req, res) => {
       const d = kstDay(); store.linkSalt = store.linkSalt || {}; store.linkSalt[d] = (store.linkSalt[d] || 0) + 1; save();
       res.writeHead(303, { location: '/admin?key=' + encodeURIComponent(ADMIN_KEY) }); res.end(); return;
     }
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); res.end(adminPage(req)); return;
+    adminPage(req).then(h => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); res.end(h); }); return;
   }
   const STATIC = { '/bgm.mp3': 'audio/mpeg', '/hall.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json' };
   const urlPath = req.url.split('?')[0];
