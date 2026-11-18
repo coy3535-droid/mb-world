@@ -181,7 +181,7 @@ wss.on('connection', ws => {
     if (m.type === 'hello') {
       if (ACCESS_CODE && clean(m.code, 32) !== ACCESS_CODE) { send(ws, { type: 'denied', reason: 'code' }); return; }
       c.n = clean(m.n, 16) || '매니저'; c.p = clean(m.p, 24); c.c = color(m.c);
-      c.x = num(m.x, 0, 2400); c.y = num(m.y, 0, 1500);
+      c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300);
       c.token = /^[a-z0-9]{8,64}$/i.test(m.token || '') ? m.token : crypto.randomBytes(12).toString('hex');
       // same person in another tab: keep only the newest
       for (const [ows, oc] of online) if (ows !== ws && oc.token === c.token && oc.joined) { oc.joined = false; broadcast({ type: 'leave', id: oc.id }); ows.close(4000, 'replaced'); }
@@ -199,7 +199,7 @@ wss.on('connection', ws => {
     if (!c.joined) return;
 
     if (m.type === 'state') {
-      c.x = num(m.x, 0, 2400); c.y = num(m.y, 0, 1500); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0; c.s = m.s ? 1 : 0; c.v = m.v ? 1 : 0; c.ca = Math.max(-1e4, Math.min(1e4, +m.ca || 0));
+      c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0; c.s = m.s ? 1 : 0; c.v = m.v ? 1 : 0; c.ca = Math.max(-1e4, Math.min(1e4, +m.ca || 0));
       if (typeof m.e === 'string') { c.e = clean(m.e, 4); c.et = num(m.et, 0, 9e15); }
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
     } else if (m.type === 'profile') {
