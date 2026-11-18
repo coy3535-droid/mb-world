@@ -158,7 +158,7 @@ button.chip:hover{border-color:rgba(255,255,255,.25)}
     <div class="chip" id="conn"><i></i><span>연결 중…</span></div>
   </div>
   <div id="toast"></div>
-  <div id="raceHud"><div class="r1"><span>LAP <b id="rLap">1/3</b></span><span>⏱ <b id="rTime">0.00</b></span><span class="spd" id="rSpd">0</span><span>km/h · <span id="rGear">N</span></span><button id="rExit" type="button">내리기</button></div></div>
+  <div id="raceHud"><div class="r1"><span><span id="rLapL">LAP</span> <b id="rLap">1/3</b></span><span>⏱ <b id="rTime">0.00</b></span><span class="spd" id="rSpd">0</span><span>km/h · <span id="rGear">N</span></span><button id="rExit" type="button">내리기</button></div></div>
   <div id="raceBig"></div>
   <div id="raceHelp"></div>
   <button id="actBtn"></button>
@@ -604,7 +604,8 @@ function hallBuildProc(z){
 const PAV={x:1200,y:-1000},CAMP={x:-1200,y:700},MILL={x:2500,y:2620},PARK={x0:3660,y0:788,x1:4250,y1:1290};
 const TRAILS=[[[-100,750],[-500,700],[-900,820],[-1200,700]],[[-1200,700],[-1500,480],[-1700,80],[-1550,-420],[-1100,-720],[-600,-900],[300,-1120],[1200,-1000]],
   [[-900,820],[-960,1300],[-900,1700],[-900,2400],[-700,2850]],[[820,-300],[700,-620],[900,-860],[1200,-1000]],[[1590,2400],[1900,2700],[2500,2800]]];
-const ROADS=[[-2400,712,2520,76],[2280,712,2520,76],[790,-300,60,300],[1560,1500,60,1800],[2450,150,2300,60],[2450,1290,2300,60],[2950,150,60,1200],[3600,150,60,1200],[4250,150,60,1200]];
+const RING=[[-340,-340,2710,80],[-340,1560,2710,80],[-340,-340,80,1980],[2290,-340,80,1980]];
+const ROADS=[...RING,[-2400,712,2520,76],[2280,712,2520,76],[790,-260,60,260],[1560,1500,60,1800],[2450,150,2300,60],[2450,1290,2300,60],[2950,150,60,1200],[3600,150,60,1200],[4250,150,60,1200]];
 const NO_TREE=[[-60,-60,2520,1620],[2440,120,2320,1260],[PAV.x-220,PAV.y-220,440,720],[CAMP.x-260,CAMP.y-260,520,760],[MILL.x-200,MILL.y-200,400,700]];
 let fireFX=null,millBlades=null,waterTex=null;
 const segD=(px,py,a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;let t=l?((px-a[0])*dx+(py-a[1])*dy)/l:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-a[0]-t*dx,py-a[1]-t*dy);};
@@ -628,6 +629,8 @@ function buildExpansion(){
   // roads (asphalt) + center dashes
   for(const r of ROADS)B(...r,.05,road,{cast:false});
   for(let x=-2380;x<4800;x+=70)if(x<100||x>2280)B(x,748,34,4,.06,'#f1f1f1',{cast:false});
+  for(let x=-240;x<2270;x+=70){if(Math.abs(x-805)>50)B(x,-302,34,4,.06,'#f2c230',{cast:false});if(Math.abs(x-1590)>50)B(x,1598,34,4,.06,'#f2c230',{cast:false});}
+  for(let y=-240;y<1540;y+=70)if(Math.abs(y-750)>60){B(-302,y,4,34,.06,'#f2c230',{cast:false});B(2328,y,4,34,.06,'#f2c230',{cast:false});}
   // trails
   for(const t of TRAILS)strip(t,64,dirt,.045);
   // ---- river ----
@@ -789,7 +792,7 @@ function buildWorld(){
   // trees
   sd=29;let placed=0;
   for(let k=0;k<1200&&placed<75;k++){const x=50+rnd()*(W-100),y=50+rnd()*(H-100);
-    const bad=ZONES.some(z=>x>z.x-45&&x<z.x+z.w+45&&y>z.y-45&&y<z.y+z.h+45)||[...paths,...AVOID].some(p=>x>p[0]-40&&x<p[0]+p[2]+40&&y>p[1]-40&&y<p[1]+p[3]+40)||CIRC.some(c=>(c.x-x)**2+(c.y-y)**2<70*70);
+    const bad=RING.some(r=>x>r[0]-40&&x<r[0]+r[2]+40&&y>r[1]-40&&y<r[1]+r[3]+40)||ZONES.some(z=>x>z.x-45&&x<z.x+z.w+45&&y>z.y-45&&y<z.y+z.h+45)||[...paths,...AVOID].some(p=>x>p[0]-40&&x<p[0]+p[2]+40&&y>p[1]-40&&y<p[1]+p[3]+40)||CIRC.some(c=>(c.x-x)**2+(c.y-y)**2<70*70);
     if(!bad){tree3(x,y,.8+rnd()*.55,rnd()<.4?1:0);placed++;}}
   // flowers
   const fl=[['#ff6fb1'],['#f2c230'],['#ffffff']];
@@ -844,7 +847,7 @@ function spawn(){for(let i=0;i<300;i++){const x=1150+Math.random()*100,y=540+Mat
 const MODE=(window.claude&&typeof window.claude.use==='function')?'artifact':(/^https?:$/.test(location.protocol)?'ws':'none');
 let room=null,db=null,myKey='me-local',myId=null,ws=null,needCode=false,accessCode='',lastSent=0,welcomed=false;
 function setConn(on,label){const el=$('#conn');el.classList.toggle('on',!!on);el.querySelector('span').textContent=label||(on?'실시간 연결됨':'연결 중…');}
-function stateObj(){return {n:me.n,p:me.p,c:me.c,x:Math.round(me.x),y:Math.round(me.y),h:Math.round(me.h*100)/100,m:me.moving?1:0,s:me.sit?1:0,v:race.on?1:0,ca:Math.round(race.a*100)/100,e:me.e,et:me.et};}
+function stateObj(){return {n:me.n,p:me.p,c:me.c,x:Math.round(me.x),y:Math.round(me.y),h:Math.round(me.h*100)/100,m:me.moving?1:0,s:me.sit?1:0,v:race.on?({sedan:2,bike:3}[race.mode]||1):0,ca:Math.round(race.a*100)/100,e:me.e,et:me.et};}
 function push(force){
   if(!joined)return;const now=performance.now();if(!force&&now-lastSent<70)return;lastSent=now;
   if(MODE==='artifact'&&room) room.presence({...stateObj(),id:myId}).catch(()=>{});
@@ -853,7 +856,7 @@ function push(force){
 function upsertPeer(key,s){
   if(!s||typeof s.x!=='number'||!s.n||key===myKey)return;
   let a=AV.get(key);if(!a){a=makeAvatar(key,false);a.x=a.tx=clamp(s.x,WB.x0,WB.x1);a.y=a.ty=clamp(s.y,WB.y0,WB.y1);}
-  a.tx=clamp(+s.x,WB.x0,WB.x1);a.ty=clamp(+s.y,WB.y0,WB.y1);a.th=+s.h||0;a.sit=!!s.s;a.veh=!!s.v;a.ca=+s.ca||0;
+  a.tx=clamp(+s.x,WB.x0,WB.x1);a.ty=clamp(+s.y,WB.y0,WB.y1);a.th=+s.h||0;a.sit=!!s.s;a.veh=!!s.v;a.vt=+s.v||0;a.ca=+s.ca||0;
   setLook(a,clean(s.n,16),clean(s.p,24),okColor(s.c));
   if(s.e&&s.et&&s.et!==a.lastEt){if(a.lastEt!==undefined&&Date.now()-s.et<5000){showEmote(key,clean(s.e,4));if(s.e==='🙇')a.bowT=performance.now();}a.lastEt=s.et;}else if(a.lastEt===undefined)a.lastEt=s.et||0;
   peopleDirty=true;}
@@ -893,12 +896,13 @@ function initWS(){
     else if(m.type==='denied'){welcomed=false;if(joined){joined=false;openProfile('join');}$('#jerr').textContent=m.reason==='code'?'입장 코드가 맞지 않아요.':'입장할 수 없어요.';}
     else if(m.type==='welcome'){welcomed=true;const old=myKey;myKey=m.id;if(meAv){AV.delete(old);AV.set(myKey,meAv);meAv.key=myKey;}
       for(const k of [...AV.keys()])if(k!==myKey)removeAvatar(k);
-      (m.peers||[]).forEach(p=>upsertPeer(p.id,p));(m.history||[]).forEach(x=>addMsg({...x,_id:x.id}));if(m.board)applyBoard(m.board);statsReady(m.mystats||null);
+      (m.peers||[]).forEach(p=>upsertPeer(p.id,p));(m.history||[]).forEach(x=>addMsg({...x,_id:x.id}));if(m.board)applyBoard(m.board);if(m.news)setNews(m.news);statsReady(m.mystats||null);
       setConn(true);$('#join').classList.add('hide');push(true);}
     else if(m.type==='peer') upsertPeer(m.id,m);
     else if(m.type==='leave'){removeAvatar(m.id);peopleDirty=true;}
     else if(m.type==='chat'&&m.m) addMsg({...m.m,_id:m.m.id});
     else if(m.type==='board')applyBoard(m);
+    else if(m.type==='news')setNews(m.items);
     else if(m.type==='notice') sys(clean(m.text,120));
   };
   ws.onclose=()=>{welcomed=false;setConn(false,'다시 연결 중…');for(const k of [...AV.keys()])if(k!==myKey)removeAvatar(k);setTimeout(initWS,Math.min(8000,1000*2**retry++));};
@@ -1044,8 +1048,8 @@ bgmPaint();
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{if(joined&&bgmOn&&bgmMain.paused)bgmStart();},{passive:true}));
 document.addEventListener('visibilitychange',()=>{if(document.hidden){bgmMain.pause();bgmHall.pause();}else if(joined&&bgmOn){bgmStart();}});
 $('#camBtn').onclick=()=>{camMode=camMode==='third'?'top':'third';zoomF=camMode==='third'?1.25:(MOBILE?1.45:1.4);try{localStorage.setItem('mbworld.cam',camMode);}catch(e){}toast(camMode==='third'?'🎥 가까이 보기':'🗺️ 위에서 보기');};
-const DESTS=[['🏛️ MB 홀',1200,520],['⛲ MB 광장',1200,890],['🚘 쇼룸',440,600],['🔧 MB 서비스센터',440,1000],['☕ MB 카페',1950,1000],['🏎️ 테스트 트랙',1200,1080],['🔥 숲속 캠프파이어',-1200,840],['⛰️ 산마루 정자',1200,-860],['🏘️ 햇살 주택가',2700,750],['🛝 동네 공원',3950,1060],['🌊 강변 공원',1700,2420],['🌼 풍차 언덕',2500,2800]];
-function teleport(x,y){for(let i=0;i<80;i++){const a=Math.random()*6.28,d=i===0?0:20+i*4,nx=x+Math.cos(a)*d,ny=y+Math.sin(a)*d;if(!hits(nx,ny)){me.x=nx;me.y=ny;me.sit=false;push(true);camPos.set(U(nx),12,U(ny)+16);return true;}}return false;}
+const DESTS=[['🏛️ MB 홀',1200,520],['⛲ MB 광장',1200,890],['📢 전광판',1390,660],['🚗 드라이브 스테이션',2170,680],['🚘 쇼룸',440,600],['🔧 MB 서비스센터',440,1000],['☕ MB 카페',1950,1000],['🏎️ 테스트 트랙',1200,1080],['🔥 숲속 캠프파이어',-1200,840],['⛰️ 산마루 정자',1200,-860],['🏘️ 햇살 주택가',2700,750],['🛝 동네 공원',3950,1060],['🌊 강변 공원',1700,2420],['🌼 풍차 언덕',2500,2800]];
+function teleport(x,y){for(let i=0;i<80;i++){const a=Math.random()*6.28,d=i===0?0:20+i*4,nx=x+Math.cos(a)*d,ny=y+Math.sin(a)*d;if(!hits(nx,ny)){me.x=nx;me.y=ny;target=null;me.sit=false;push(true);camPos.set(U(nx),12,U(ny)+16);return true;}}return false;}
 $('#travelBtn').onclick=()=>{if(!joined||race.on)return;$('#act').classList.remove('hide');actOpen={id:'travel'};const b=actShell('🚩 어디로 갈까요?','누르면 바로 이동해요. 천천히 걸어가도 좋아요 🚶');
   const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px';
   for(const [n,x,y] of DESTS){const bt=el('button','btn ghost',n);bt.style.cssText='margin:0;padding:11px 6px;font-size:13px;color:var(--txt)';bt.onclick=()=>{closeAct();teleport(x,y);toast(n+'(으)로 이동했어요');};grid.append(bt);}
@@ -1092,6 +1096,40 @@ const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}};
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
 const fmtT=ms=>ms?(ms/1000).toFixed(2)+'초':'-';
 
+/* ---------- 전광판 (LED billboard) ---------- */
+const BB={x:1390,y:556,w:240};let NEWS=[],bbCv=null,bbG=null,bbTex=null,bbT=0,bbI=0,bbSeen='';
+const NEWS_DEFAULT=[{id:'rp343514',t:'Retail Platform 새 소식',d:'Mercedes-Benz Retail Platform에 올라온 소식이에요 (사내 계정 로그인)',u:'https://retail-platform.i.mercedes-benz.com/news/343514'},{id:'w',t:'MB World에 오신 걸 환영해요',d:'천천히 걷고, 쉬고, 인사 나누고 가세요 ☕'}];
+const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:'';
+function setNews(items){NEWS=(Array.isArray(items)?items:[]).filter(n=>n&&n.t).slice(0,6).map(n=>({id:String(n.id||''),t:String(n.t).slice(0,40),d:String(n.d||'').slice(0,80),u:safeUrl(n.u)}));bbI=0;bbT=0;
+  const sig=NEWS.map(n=>n.id).join(',');if(sig&&sig!==bbSeen){let last='';try{last=localStorage.getItem('mbworld.news')||'';}catch(e){}if(last!==sig&&joined)toast('📢 전광판에 새 소식이 올라왔어요');}bbSeen=sig;
+  if(actOpen&&actOpen.id==='news')openNews();}
+function buildBillboard(){const{x,y,w}=BB,h=Math.round(w*.42);
+  for(const dx of [-w/2+18,w/2-18])CY(x+dx,y,7,4.2,'#2e3238',{seg:10,obst:true});
+  const frame=add(new THREE.BoxGeometry(U(w)+.5,U(h)+.5,.5),M('#1b1d22',{metalness:.6,roughness:.4,flatShading:false}),U(x),4.2+U(h)/2,U(y));
+  B(x-w/2-6,y-14,w+12,10,.25,'#2e3238',{y0:4.2+U(h)+.2});
+  bbCv=document.createElement('canvas');bbCv.width=1024;bbCv.height=Math.round(1024*h/w);bbG=bbCv.getContext('2d');
+  bbTex=new THREE.CanvasTexture(bbCv);bbTex.encoding=THREE.sRGBEncoding;bbTex.anisotropy=4;
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(U(w),U(h)),new THREE.MeshBasicMaterial({map:bbTex,toneMapped:false}));scr.position.set(U(x),4.2+U(h)/2,U(y)+.26);scene.add(scr);
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(U(w),U(h)),M('#2a2d34'));back.rotation.y=Math.PI;back.position.set(U(x),4.2+U(h)/2,U(y)-.26);scene.add(back);
+  const gl=new THREE.PointLight('#5fd0ff',.8,14,2);gl.position.set(U(x),5.5,U(y)+3);scene.add(gl);drawBillboard(0);}
+function drawBillboard(dt){if(!bbG)return;bbT+=dt;const list=NEWS.length?NEWS:NEWS_DEFAULT;if(bbT>9){bbT=0;bbI=(bbI+1)%list.length;}const n=list[bbI%list.length];
+  const g=bbG,W2=bbCv.width,H2=bbCv.height;g.fillStyle='#05070a';g.fillRect(0,0,W2,H2);
+  g.fillStyle='#00adef';g.fillRect(0,0,W2,78);g.fillStyle='#001018';g.font='900 46px "Noto Sans KR", sans-serif';g.textBaseline='middle';g.fillText('📢  MB NEWS',28,41);
+  g.textAlign='right';g.font='700 32px "Noto Sans KR", sans-serif';g.fillText((bbI%list.length+1)+' / '+list.length,W2-28,41);g.textAlign='left';
+  g.save();g.beginPath();g.rect(0,90,W2,H2-160);g.clip();g.fillStyle='#ffd36b';g.font='900 84px "Noto Sans KR", sans-serif';const tw=g.measureText(n.t).width;
+  if(tw<W2-60)g.fillText(n.t,30,175);else{const sp=140,off=(bbT*sp)%(tw+200);g.fillText(n.t,W2-off,175);g.fillText(n.t,W2-off+tw+200,175);}
+  g.fillStyle='#e9ebef';g.font='500 40px "Noto Sans KR", sans-serif';g.fillText(n.d||'',30,262);g.restore();
+  g.fillStyle=n.u?'#3ddc84':'#9aa0aa';g.font='700 34px "Noto Sans KR", sans-serif';g.fillText(n.u?'▶ 앞의 📢 표시에 가까이 가서 눌러 링크 열기':'▶ 앞의 📢 표시에서 자세히 보기',30,H2-38);
+  g.globalAlpha=.16;g.fillStyle='#000';for(let yy=0;yy<H2;yy+=4)g.fillRect(0,yy,W2,1.5);g.globalAlpha=1;bbTex.needsUpdate=true;}
+function openNews(){$('#act').classList.remove('hide');actOpen={id:'news'};const list=NEWS.length?NEWS:NEWS_DEFAULT;
+  try{localStorage.setItem('mbworld.news',NEWS.map(n=>n.id).join(','));}catch(e){}
+  const b=actShell('📢 MB 전광판','지점장님들께 전하는 소식과 재밌는 정보예요.');
+  for(const n of list){const card=el('div');card.style.cssText='background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px;margin-top:10px;text-align:left';
+    const t=el('div',null,n.t);t.style.cssText='font-weight:800;font-size:15px;color:#ffd36b';card.append(t);
+    if(n.d){const d=el('div',null,n.d);d.style.cssText='font-size:13px;color:var(--sub,#9aa0aa);margin-top:4px;line-height:1.6';card.append(d);}
+    if(n.u){const a=el('a','btn',"열기 ↗");a.href=n.u;a.target='_blank';a.rel='noopener noreferrer';a.style.cssText='display:block;margin-top:10px;text-decoration:none;text-align:center';card.append(a);}
+    b.append(card);}
+  closeBtn(b);}
 const SPOTS=[
   {id:'bolt',x:300,y:1272,icon:'🔧',label:'볼트 108회 조이기'},
   {id:'polish',x:440,y:392,icon:'✨',label:'차량 광택 내기'},
@@ -1099,6 +1137,8 @@ const SPOTS=[
   {id:'lap',x:1200,y:1144,icon:'🏎️',label:'레이스카 타기 (3랩)'},
   {id:'wish',x:1200,y:864,icon:'🪙',label:'분수에 오늘의 다짐'},
   {id:'coffee',x:1810,y:1064,icon:'☕',label:'커피 한 잔'},
+  {id:'news',x:1390,y:640,icon:'📢',label:'전광판 소식 보기'},
+  {id:'drive',x:2170,y:640,icon:'🚗',label:'드라이브 (세단·오토바이)'},
 ];
 function buildSpots(){for(const s of SPOTS){
   const ring=new THREE.Mesh(new THREE.TorusGeometry(1.1,.07,6,40),M('#ffd36b',{emissive:'#ffc23a',emissiveIntensity:1.3}));ring.rotation.x=-Math.PI/2;ring.position.set(U(s.x),.32,U(s.y));scene.add(ring);
@@ -1133,6 +1173,8 @@ function actShell(title,sub){const b=$('#actBody');b.textContent='';b.append(el(
 function closeBtn(b,label='닫기'){const c=el('button','btn ghost',label);c.onclick=closeAct;b.append(c);}
 function openAct(id){
   if(id==='sit'){toggleSit();return;}
+  if(id==='news'){openNews();return;}
+  if(id==='drive'){actDrive();return;}
   if(!joined||!stLoaded){toast('잠시만요, 기록을 불러오는 중이에요');return;}dayRoll();
   if(id==='coffee'){if(st.day.coffee<3){st.day.coffee++;gain(1,`☕ 커피 한 잔의 여유 (${st.day.coffee}/3)`);}else toast('오늘 커피 포인트는 다 받았어요 ☕ 그래도 한 잔 더!');emote('☕');tok(520,.3);return;}
   $('#act').classList.remove('hide');actOpen={id};
@@ -1256,17 +1298,18 @@ const engine={on:false,n:null,
 /* ---------- 3-lap race ---------- */
 const TR={cx:1200,cy:1250,ro:[275,140],ri:[200,72]};
 const GEARS=[0,70,120,170,220,270,330];
-const race={on:false,phase:'idle',t0:0,cd0:0,car:null,x:1200,y:1144,a:Math.PI,v:0,prog:0,lastTh:0,laps:[],gear:1,rpm:900,thrPrev:0,bump:0,total:0};
+const race={mode:'track',on:false,phase:'idle',t0:0,cd0:0,car:null,x:1200,y:1144,a:Math.PI,v:0,prog:0,lastTh:0,laps:[],gear:1,rpm:900,thrPrev:0,bump:0,total:0};
 const trackTheta=(x,y)=>Math.atan2((y-TR.cy)/105,(x-TR.cx)/238);
 function raceEnter(){if(!joined)return;closeAct();
-  Object.assign(race,{on:true,phase:'count',cd0:performance.now(),x:1200,y:1144,a:Math.PI,v:0,prog:0,laps:[],gear:1,rpm:900,total:0});race.lastTh=trackTheta(race.x,race.y);
+  Object.assign(race,{mode:'track',on:true,phase:'count',cd0:performance.now(),x:1200,y:1144,a:Math.PI,v:0,prog:0,laps:[],gear:1,rpm:900,total:0});race.lastTh=trackTheta(race.x,race.y);
   if(!race.car)race.car=f1car(race.x,race.y,{y0:0,scale:.34});race.car.visible=true;
   if(meAv)meAv.g.visible=false;me.sit=false;target=null;if(trackCar)trackCar.visible=false;
-  engine.start();bgmTarget=.08;$('#raceHud').style.display='block';$('#raceHelp').style.display='block';
+  engine.start();bgmTarget=.08;$('#raceHud').style.display='block';$('#raceHelp').style.display='block';$('#rLapL').textContent='LAP';
   $('#raceHelp').textContent=MOBILE?'조이스틱 위 = 가속 · 아래 = 브레이크 · 좌우 = 핸들':'W/↑ 가속 · S/↓ 브레이크 · A·D/←→ 핸들 · E 내리기';
   $('#actBtn').style.display='none';nearSpot=null;$('#raceBig')._n=null;push(true);}
 function raceExit(){if(!race.on)return;race.on=false;race.phase='idle';if(race.car)race.car.visible=false;if(meAv)meAv.g.visible=true;if(trackCar)trackCar.visible=true;
-  me.x=1200;me.y=1084;me.h=Math.PI;engine.stop();bgmTarget=.32;['#raceHud','#raceBig','#raceHelp'].forEach(q=>$(q).style.display='none');closeAct();push(true);}
+  if(race.mode!=='track'){const c=race.car;if(c)c.visible=false;race.car=race._track||null;let ok=false;for(let i=0;i<60&&!ok;i++){const a=race.a+Math.PI/2+i*.7,d=34+i*3,nx=race.x+Math.cos(a)*d,ny=race.y+Math.sin(a)*d;if(!hits(nx,ny)){me.x=nx;me.y=ny;ok=true;}}if(!ok){me.x=2170;me.y=690;}me.h=0;race.mode='track';}
+  else{me.x=1200;me.y=1084;me.h=Math.PI;}engine.stop();bgmTarget=.32;['#raceHud','#raceBig','#raceHelp'].forEach(q=>$(q).style.display='none');closeAct();push(true);}
 $('#rExit').onclick=e=>{e.stopPropagation();raceExit();};
 function raceFinish(total){race.phase='done';race.total=total;engine.crackle();chime();
   let msg='',p=0;if(stLoaded){dayRoll();st.day.laps++;const prev=st.race,rec=!prev||total<prev;if(rec)st.race=total;if(st.day.laps<=3)p+=5;if(rec&&prev)p+=5;
@@ -1325,19 +1368,97 @@ function raceTick(dt){const now=performance.now();
 
 /* ---------- loop ---------- */
 const mini=$('#mini'),mctx=mini.getContext('2d');
-let last=performance.now(),tt=0,peopleT=0;const camPos=new THREE.Vector3(U(1200),20,U(1200)),look=new THREE.Vector3(),camLook=new THREE.Vector3(U(1200),0,U(700)),pv=new THREE.Vector3();
+let bbAcc=0;let last=performance.now(),tt=0,peopleT=0;const camPos=new THREE.Vector3(U(1200),20,U(1200)),look=new THREE.Vector3(),camLook=new THREE.Vector3(U(1200),0,U(700)),pv=new THREE.Vector3();
 const fray=new THREE.Raycaster(),fv=new THREE.Vector3();let fadeFrame=0,fadeHits=new Set();
 function fadeTick(fx,fz,dt){
   if(++fadeFrame%2===0){fadeHits=new Set();if(camMode==='third'&&meAv){for(const hy of [.4,1.2,2.1])for(const dx of [-.35,0,.35]){fv.set(fx+dx,hy+(meAv.sit?-.3:0),fz).sub(camera.position);const d=fv.length();fray.set(camera.position,fv.normalize());fray.far=Math.max(.1,d-.7);for(const h of fray.intersectObjects(FADE,false))fadeHits.add(h.object);}}}
   for(const m of FADE){const goal=fadeHits.has(m)?Math.min(.16,m.userData.base):m.userData.base;if(Math.abs(m.userData.cur-goal)<.005&&m.userData.cur===goal)continue;
     m.userData.cur+=(goal-m.userData.cur)*Math.min(1,dt*10);if(Math.abs(m.userData.cur-goal)<.01)m.userData.cur=goal;
     const tr=m.userData.tr||m.userData.cur<.99;if(m.material.transparent!==tr){m.material.transparent=tr;m.material.needsUpdate=true;}m.material.opacity=m.userData.cur;m.material.depthWrite=m.userData.cur>.6;}}
+/* ---------- 순환도로 드라이브 (세단 · 오토바이) ---------- */
+const VEH={sedan:{name:'MB 실버 세단',max:400,acc:380,r:20,pitch:1},bike:{name:'오토바이',max:450,acc:470,r:12,pitch:1.7}};
+const RGATES=[[2270,860,120,40],[1000,1540,40,120],[-360,640,120,40],[1000,-360,40,120]];
+const onRoad=(x,y)=>ROADS.some(r=>inR(x,y,r,8))||(x>0&&x<2400&&y>704&&y<796)||!!zoneAt(x,y);
+let ringBest=0;try{ringBest=+localStorage.getItem('mbworld.ring')||0;}catch(e){}
+function sedanCar(){const g=car3(0,0,124,56,'#d4d8de',0,{obst:false});g.visible=false;return g;}
+function bike3(col){const g=new THREE.Group(),P=(geo,mat,x,y,z)=>add(geo,mat,x,y,z,{parent:g});
+  const tire=M('#141518',{flatShading:false,roughness:.7}),chrome=M('#c9ced6',{flatShading:false,metalness:1,roughness:.2}),dark=M('#22252b',{flatShading:false,roughness:.5});
+  const paint=new THREE.MeshPhysicalMaterial({color:'#1b1d22',roughness:.25,metalness:.5,clearcoat:1});
+  for(const x of [.66,-.62]){const t=P(new THREE.TorusGeometry(.36,.13,10,24),tire,x,.42,0);const r=P(new THREE.CylinderGeometry(.22,.22,.1,16).rotateX(Math.PI/2),chrome,x,.42,0);}
+  const fr=P(new THREE.BoxGeometry(1.0,.22,.22),dark,0,.72,0);fr.rotation.z=.12;
+  P(new THREE.BoxGeometry(.62,.32,.42),paint,.18,1.0,0);P(new THREE.BoxGeometry(.6,.12,.36),M('#0e0f12',{flatShading:false}),-.32,.98,0);
+  const fk=P(new THREE.CylinderGeometry(.05,.05,.9,8),chrome,.56,.82,0);fk.rotation.z=.42;
+  P(new THREE.BoxGeometry(.08,.06,.82),chrome,.44,1.28,0);P(new THREE.BoxGeometry(.3,.3,.34),dark,-.1,.55,0);
+  P(new THREE.SphereGeometry(.11,12,8),new THREE.MeshBasicMaterial({color:'#fff6dc',toneMapped:false}),.7,1.08,0);
+  P(new THREE.BoxGeometry(.06,.07,.2),new THREE.MeshBasicMaterial({color:'#ff2a1a',toneMapped:false}),-.72,.98,0);
+  const ex=P(new THREE.CylinderGeometry(.06,.07,.7,10),chrome,-.35,.5,.2);ex.rotation.z=Math.PI/2.3;
+  // rider
+  const suit=M(col,{flatShading:false,roughness:.6});const body=P(new THREE.CylinderGeometry(.2,.24,.62,12),suit,-.12,1.42,0);body.rotation.z=-.5;
+  P(new THREE.SphereGeometry(.24,16,12),new THREE.MeshPhysicalMaterial({color:'#f4f6f8',roughness:.2,clearcoat:1}),.08,1.86,0);
+  P(new THREE.BoxGeometry(.06,.1,.3),new THREE.MeshPhysicalMaterial({color:'#0d1722',roughness:.05,metalness:.5}),.3,1.86,0);
+  for(const z of [.2,-.2]){const ar=P(new THREE.CylinderGeometry(.06,.06,.55,8),suit,.2,1.42,z);ar.rotation.z=-1.05;const lg=P(new THREE.CylinderGeometry(.08,.08,.6,8),M('#2a2d34'),-.1,.88,z*1.25);lg.rotation.z=.6;}
+  g.scale.setScalar(1.55);g.visible=false;scene.add(g);return g;}
+function actDrive(){if(!joined)return;$('#act').classList.remove('hide');actOpen={id:'drive'};
+  const b=actShell('🚗 MB 드라이브 스테이션','캠퍼스를 크게 도는 <b>순환도로</b>(노란 중앙선)를 달려보세요.<br>한 바퀴를 돌면 기록이 남아요.'+(ringBest?` 내 최고 <b>${fmtT(ringBest)}</b>`:''));
+  for(const [k,ic,sub] of [['sedan','🚘','부드럽고 묵직한 실버 세단'],['bike','🏍️','가볍고 빠른 오토바이']]){const bt=el('button','btn',`${ic} ${VEH[k].name}`);const sm=el('div','sub',sub);sm.style.marginTop='4px';bt.onclick=()=>driveEnter(k);b.append(bt,sm);}
+  closeBtn(b);}
+function driveEnter(kind){closeAct();if(!joined||race.on)return;const V=VEH[kind];
+  race._track=race.mode==='track'?race.car:race._track;race.cars=race.cars||{};
+  const car=race.cars[kind]||(race.cars[kind]=kind==='sedan'?sedanCar():bike3(me.c||'#00adef'));
+  let sx=2330,sy=640;for(let i=0;i<40&&hits(sx,sy,V.r);i++)sy-=20;
+  Object.assign(race,{mode:kind,on:true,phase:'run',x:sx,y:sy,a:-Math.PI/2,v:0,gear:1,rpm:900,thrPrev:0,bump:0,gate:-1,gStart:-1,gDir:0,gSeen:0,lapT0:0,lapsDone:0,inGate:-1,car});
+  car.visible=true;if(meAv)meAv.g.visible=false;me.sit=false;target=null;
+  engine.start();bgmTarget=.12;$('#raceHud').style.display='block';$('#raceHelp').style.display='block';$('#rLapL').textContent='순환도로';
+  $('#raceHelp').textContent=MOBILE?'조이스틱 위 = 가속 · 아래 = 브레이크 · 좌우 = 핸들':'W/↑ 가속 · S/↓ 브레이크·후진 · A·D/←→ 핸들 · E 내리기';
+  $('#actBtn').style.display='none';nearSpot=null;toast(V.name+' 출발! 노란 중앙선을 따라 한 바퀴 돌아보세요');push(true);}
+function driveTick(dt){const now=performance.now(),V=VEH[race.mode];
+  let thr=0,brk=0,str=0;
+  if(keys.has('w')||keys.has('arrowup'))thr=1;if(keys.has('s')||keys.has('arrowdown'))brk=1;
+  if(keys.has('a')||keys.has('arrowleft'))str-=1;if(keys.has('d')||keys.has('arrowright'))str+=1;
+  if(joy.on){thr=Math.min(1,Math.max(0,-joy.y*1.3));brk=Math.min(1,Math.max(0,joy.y*1.3));str=joy.x;}
+  const road=onRoad(race.x,race.y),MAXV=road?V.max:V.max*.42;
+  if(thr)race.v+=V.acc*thr*Math.max(0,1-race.v/MAXV)*dt;
+  if(brk)race.v-=(race.v>0?720:200)*brk*dt;race.v=Math.max(-110,race.v);
+  race.v-=race.v*(thr?.16:.65)*dt;if(race.v>MAXV)race.v-=(race.v-MAXV)*Math.min(1,dt*2.5);
+  race.a+=str*(race.mode==='bike'?2.9:2.4)*Math.min(1,Math.abs(race.v)/70)*Math.sign(race.v||1)*dt;
+  const dx=Math.cos(race.a)*race.v*dt,dy=Math.sin(race.a)*race.v*dt;
+  if(!hits(race.x+dx,race.y+dy,V.r)){race.x+=dx;race.y+=dy;}
+  else if(!hits(race.x+dx,race.y,V.r)){race.x+=dx;race.v*=.92;}
+  else if(!hits(race.x,race.y+dy,V.r)){race.y+=dy;race.v*=.92;}
+  else{race.v*=-.25;if(now-race.bump>350){race.bump=now;tok(130,.35);buzz(25);}}
+  // ring lap gates
+  const gi=RGATES.findIndex(r=>inR(race.x,race.y,r));
+  if(gi>=0&&gi!==race.inGate){
+    if(race.gStart<0||gi===race.gStart&&race.gSeen<4&&race.gDir===0){race.gStart=gi;race.gate=gi;race.gSeen=1;race.gDir=0;race.lapT0=now;}
+    else if(race.gDir===0&&(gi===(race.gate+1)%4||gi===(race.gate+3)%4)){race.gDir=gi===(race.gate+1)%4?1:3;race.gate=gi;race.gSeen=2;}
+    else if(race.gDir&&gi===(race.gate+race.gDir)%4){race.gate=gi;race.gSeen++;
+      if(gi===race.gStart&&race.gSeen>=5){const t=now-race.lapT0;race.lapsDone++;race.lapT0=now;race.gSeen=1;const rec=!ringBest||t<ringBest;if(rec){ringBest=t;try{localStorage.setItem('mbworld.ring',String(t));}catch(e){}}
+        engine.crackle();chime();toast((rec?'🏆 순환도로 신기록! ':'🏁 한 바퀴 완주! ')+fmtT(t));
+        if(stLoaded&&race.lapsDone===1){dayRoll();st.day.ring=(st.day.ring||0)+1;if(st.day.ring<=2)gain(3,'순환도로 한 바퀴 🚗');else saveSt();}}}
+    else if(gi!==race.gate){race.gStart=gi;race.gate=gi;race.gSeen=1;race.gDir=0;race.lapT0=now;}}
+  race.inGate=gi;
+  // engine
+  const sp=Math.abs(race.v),G=GEARS.map(g=>g*V.max/330);
+  if(race.gear<G.length-1&&sp>G[race.gear]*.97){race.gear++;engine.blip();}else if(race.gear>1&&sp<G[race.gear-1]*.62)race.gear--;
+  const lo=race.gear>1?G[race.gear-1]*.6:0,hi=G[race.gear];let rpm=sp<4?900+thr*3600:1100+Math.min(1,(sp-lo)/(hi-lo))*5800;
+  race.rpm+=(rpm-race.rpm)*Math.min(1,dt*9);if(race.thrPrev>.6&&thr<.2&&race.rpm>3600&&race.mode==='sedan')engine.crackle();race.thrPrev=thr;engine.update(race.rpm*V.pitch,thr);
+  me.x=race.x;me.y=race.y;me.moving=sp>5;if(meAv){meAv.x=meAv.tx=me.x;meAv.y=meAv.ty=me.y;}
+  race.car.position.set(U(race.x),floorY(race.x,race.y),U(race.y));race.car.rotation.y=-race.a;
+  if(race.mode==='bike')race.car.rotation.x=-str*Math.min(1,sp/200)*.32;
+  push(false);
+  $('#rLap').textContent=race.lapsDone+'바퀴';$('#rTime').textContent=race.gStart>=0?((now-race.lapT0)/1000).toFixed(1):'—';$('#rSpd').textContent=Math.round(sp*.9);$('#rGear').textContent=sp<2?'N':race.gear;}
+function buildDriveStation(){const x=2170,y=640;
+  B(x-110,y-60,220,130,.08,'#3a3d44',{cast:false});
+  for(const dx of [-100,100])CY(x+dx,y-55,5,3.6,'#2e3238',{seg:8,obst:true});B(x-112,y-64,224,24,.18,'#00adef',{y0:3.6});
+  const t=textTex('MB DRIVE',{w:512,h:96,bg:'#0e0f12',fg:'#ffffff',font:'900 56px "Noto Sans KR", sans-serif',r:10});const pl=new THREE.Mesh(new THREE.PlaneGeometry(4.4,.82),new THREE.MeshBasicMaterial({map:t,toneMapped:false}));pl.position.set(U(x),3.25,U(y-55)+.12);scene.add(pl);
+  const sd=car3(x-60,y+5,124,56,'#d4d8de',Math.PI/2,{obst:false});ob(x-60-28,y+5-40,56,80);
+  const bk=bike3('#00adef');bk.visible=true;bk.position.set(U(x+70),0,U(y+10));bk.rotation.y=-Math.PI/2;oc(x+70,y+10,22);}
 function resize(){const r=cv.getBoundingClientRect();renderer.setSize(r.width,r.height,false);if(composer){composer.setPixelRatio(Math.min(devicePixelRatio||1,MOBILE?1.25:1.75));composer.setSize(r.width,r.height);}camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();}
 addEventListener('resize',resize);new ResizeObserver(resize).observe(cv);
 const angLerp=(a,b,k)=>{let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*k;};
 function step(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;tt+=dt;
-  if(joined&&race.on){raceTick(dt);}
+  if(joined&&race.on){if(race.mode==='track')raceTick(dt);else driveTick(dt);}
   else if(joined){
     let vx=0,vy=0;
     if(keys.has('arrowleft')||keys.has('a'))vx--;if(keys.has('arrowright')||keys.has('d'))vx++;if(keys.has('arrowup')||keys.has('w'))vy--;if(keys.has('arrowdown')||keys.has('s'))vy++;
@@ -1358,7 +1479,7 @@ function step(now){
   for(const a of AV.values()){
     if(!a.self){const k=Math.min(1,dt*10),dx=a.tx-a.x,dy=a.ty-a.y;a.x+=dx*k;a.y+=dy*k;a.moving=Math.hypot(dx,dy)>1.5;}
     a.h=angLerp(a.h,a.th,Math.min(1,dt*12));
-    if(!a.self){if(a.veh){if(!a.car)a.car=f1car(a.x,a.y,{y0:0,scale:.34});a.car.visible=true;a.car.position.set(U(a.x),0,U(a.y));a.cr=angLerp(a.cr??-a.ca,-a.ca,Math.min(1,dt*10));a.car.rotation.y=a.cr;a.g.visible=false;}
+    if(!a.self){if(a.veh){const vt=a.vt||1;if(a.carT!==vt){if(a.car)a.car.visible=false;a.cars=a.cars||{};a.car=a.cars[vt]||(a.cars[vt]=vt===2?sedanCar():vt===3?bike3(a.c||'#00adef'):f1car(a.x,a.y,{y0:0,scale:.34}));a.carT=vt;}a.car.visible=true;a.car.position.set(U(a.x),vt>1?floorY(a.x,a.y):0,U(a.y));a.cr=angLerp(a.cr??-a.ca,-a.ca,Math.min(1,dt*10));a.car.rotation.y=a.cr;a.g.visible=false;}
       else if(a.car&&a.car.visible){a.car.visible=false;a.g.visible=true;}}
     const fy=floorY(a.x,a.y);
     a.g.position.set(U(a.x),fy+(a.sit?-.3:0),U(a.y));a.g.rotation.y=a.h;
@@ -1372,6 +1493,7 @@ function step(now){
   for(const s of SPOTS){if(s.sp){s.sp.visible=!race.on&&s!==nearSpot;s.ring.visible=!race.on;s.sp.position.y=3.3+Math.sin(tt*2+s.x)*.18;s.ring.scale.setScalar(1+Math.sin(tt*3+s.y)*.06);}}
   for(const n of NPCS){n.ph=(n.ph||0)+dt*3;n.arms[1].rotation.x=-.6+Math.sin(n.ph)*.5;n.arms[0].rotation.x=Math.sin(n.ph*.5)*.15;}
   if(fireFX){const f=1+Math.sin(tt*13)*.08+Math.sin(tt*7.3)*.06;fireFX.f1.scale.set(f,1+Math.sin(tt*9)*.12,f);fireFX.f2.scale.setScalar(1+Math.sin(tt*11+1)*.1);fireFX.pl.intensity=1.4+Math.sin(tt*15)*.25;}
+  {bbAcc=(bbAcc||0)+dt;if(bbAcc>.05){drawBillboard(bbAcc);bbAcc=0;}}
   if(millBlades)millBlades.rotation.z-=dt*.6;if(waterTex){waterTex.offset.x+=dt*.03;waterTex.offset.y+=dt*.01;}
   if(trackCar){const an=tt*.55,x=1200+Math.cos(an)*238,y=1250+Math.sin(an)*105;trackCar.position.set(U(x),0,U(y));trackCar.rotation.y=-Math.atan2(Math.cos(an)*105,-Math.sin(an)*238);}
   if(fountainJet){fountainJet.scale.y=1+Math.sin(tt*4)*.12;fRings.forEach((r,i)=>{const p=((tt*.5+i/3)%1);const s=U(20+p*52);r.scale.set(s,s,s);r.material.opacity=.55*(1-p);});}
@@ -1428,12 +1550,12 @@ function drawMini(){const sx=mini.width/(WB.x1-WB.x0),sy=mini.height/(WB.y1-WB.y
 
 /* ---------- boot ---------- */
 resize();
-let built=false;const build=()=>{if(built)return;built=true;buildWorld();buildExpansion();buildMiniBg();buildSpots();scene.traverse(o=>{const m=o.material;if(m&&m.isMeshStandardMaterial){m.envMapIntensity=m.isMeshPhysicalMaterial?1.0:(m.metalness>.5?.8:.28);m.needsUpdate=true;}});$('#loading').remove();};
+let built=false;const build=()=>{if(built)return;built=true;buildWorld();buildExpansion();buildBillboard();buildDriveStation();buildMiniBg();buildSpots();scene.traverse(o=>{const m=o.material;if(m&&m.isMeshStandardMaterial){m.envMapIntensity=m.isMeshPhysicalMaterial?1.0:(m.metalness>.5?.8:.28);m.needsUpdate=true;}});$('#loading').remove();};
 Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(build);
 requestAnimationFrame(step);
 if(MODE==='artifact')initArtifact();else if(MODE==='ws')initWS();else{setConn(false,'혼자 둘러보는 중');statsReady(null);}
 renderLog();
-if(/[?&]debug\b/.test(location.search))window.__mb={me,openAct,race,raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
+if(/[?&]debug\b/.test(location.search))window.__mb={me,openAct,race,driveEnter,raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
 })();
 </script>
 </body>
