@@ -66,7 +66,7 @@ const EXPIRED = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><met
 let QR = null; try { QR = require('qrcode'); } catch (e) {}
 async function adminPage(req) {
   const day = kstDay(), link = origin(req) + '/?k=' + todayToken(day), n = [...online.values()].filter(c => c.joined).length;
-  const msg = `📢 오늘의 MB World 입장 링크예요 (오늘 밤 12시까지)\n👉 ${link}`;
+  const msg = `☕ MB World — 지점장님들의 쉼터\n\n머리가 복잡하거나 잠깐 숨 돌리고 싶을 때 들러보세요.\n천천히 걷고, 방석에 앉아 쉬고, 가볍게 인사 나누는 작은 공간이에요.\n\n🧘 MB 홀에서 1분 쉬어가기\n🔧 볼트 108번 조이며 머리 비우기\n🏎️ 레이스카로 트랙 3바퀴\n\n👉 오늘의 입장 링크 (오늘 밤 12시까지)\n${link}\n\n※ 앱 설치 없이 링크만 누르면 돼요`;
   let qr = '';
   try { if (QR) qr = await QR.toString(link, { type: 'svg', margin: 1, width: 200, color: { dark: '#000000', light: '#ffffff' } }); } catch (e) {}
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -84,7 +84,7 @@ button{all:unset;cursor:pointer;display:block;text-align:center;background:#00ad
 <button type="button" class="g" id="share">📤 카톡·팀즈로 바로 보내기</button>
 ${qr ? `<div class="qr">${qr}</div>` : ''}
 <div class="s">이 링크를 받은 사람만 오늘 하루 들어올 수 있어요. 자정이 지나면 자동으로 막히고, 내일 링크가 새로 만들어져요.<br>현재 접속 중: <b>${n}명</b></div></div>
-<div class="box"><div class="l">카톡·팀즈 공유 문구</div><textarea id="msg" rows="4" readonly>${esc(msg)}</textarea><button type="button" class="g" data-copy="msg">공유 문구 복사</button></div>
+<div class="box"><div class="l">카톡·팀즈 공유 문구</div><textarea id="msg" rows="12" readonly>${esc(msg)}</textarea><button type="button" class="g" data-copy="msg">공유 문구 복사</button></div>
 <div class="box"><div class="l">링크가 원치 않는 곳에 퍼졌다면</div><form method="post" action="/admin/rotate?key=${encodeURIComponent(ADMIN_KEY)}" onsubmit="return confirm('오늘 링크를 새로 만들까요? 기존 링크로는 더 이상 들어올 수 없어요.')"><button class="g" type="submit">오늘 링크 새로 만들기</button></form></div>
 </div><div id="toast"></div><script>
 function toast(t){var e=document.getElementById('toast');e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(function(){e.style.opacity=0},1800);}
@@ -94,7 +94,7 @@ function copyFrom(id){var el=document.getElementById(id),t=el.value;
   else toast(legacyCopy(el)?'복사했어요 ✓':'글자를 길게 눌러 복사해 주세요');}
 document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){copyFrom(b.getAttribute('data-copy'))});});
 var sh=document.getElementById('share');
-if(navigator.share){sh.addEventListener('click',function(){navigator.share({title:'MB World 오늘의 입장 링크',text:'📢 오늘의 MB World 입장 링크예요 (오늘 밤 12시까지)',url:document.getElementById('u').value}).catch(function(){});});}
+if(navigator.share){sh.addEventListener('click',function(){navigator.share({title:'MB World — 지점장님들의 쉼터',text:document.getElementById('msg').value}).catch(function(){});});}
 else{sh.textContent='📤 공유 문구 복사';sh.addEventListener('click',function(){copyFrom('msg')});}
 </script></body></html>`;
 }

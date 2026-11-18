@@ -182,7 +182,7 @@ button.chip:hover{border-color:rgba(255,255,255,.25)}
 
 <div id="join" class="modal">
   <div class="card">
-    <div id="jHead"><div class="logo"><b>MB</b> WORLD</div><p>서비스매니저 라운지에 오신 걸 환영해요.<br>돌아다니다가 가볍게 인사 나눠보세요.</p></div>
+    <div id="jHead"><div class="logo"><b>MB</b> WORLD</div><p>지점장님들의 쉼터에 오신 걸 환영해요.<br>잠깐 머리 식히고, 천천히 쉬어가세요 ☕</p></div>
     <label>이름</label><input id="jn" maxlength="16" placeholder="예: 김민수 매니저">
     <label>소속 파트너 · 센터</label><input id="jp" maxlength="24" placeholder="예: 한성모터스 반포">
     <div id="codeWrap" style="display:none"><label>입장 코드</label><input id="jc" maxlength="32" placeholder="안내받은 코드"></div>
@@ -874,7 +874,7 @@ let pick=COLORS[Math.floor(Math.random()*COLORS.length)],pmode='join';
 try{const s=JSON.parse(localStorage.getItem('mbworld.me')||'null');if(s){$('#jn').value=s.n||'';$('#jp').value=s.p||'';if(COLORS.includes(s.c))pick=s.c;accessCode=s.code||'';$('#jc').value=accessCode;}}catch(e){}
 const swEl=$('#sw');function paintSw(){swEl.textContent='';COLORS.forEach(c=>{const b=document.createElement('button');b.type='button';b.style.background=c;b.classList.toggle('on',c===pick);b.onclick=()=>{pick=c;paintSw();};swEl.append(b);});}paintSw();
 function openProfile(mode){pmode=mode;$('#jerr').textContent='';
-  $('#jHead').innerHTML=mode==='edit'?'<h2>✏️ 내 정보 수정</h2><p>바꾼 이름과 색은 바로 모두에게 보여요.</p>':'<div class="logo"><b>MB</b> WORLD</div><p>서비스매니저 라운지에 오신 걸 환영해요.<br>돌아다니다가 가볍게 인사 나눠보세요.</p>';
+  $('#jHead').innerHTML=mode==='edit'?'<h2>✏️ 내 정보 수정</h2><p>바꾼 이름과 색은 바로 모두에게 보여요.</p>':'<div class="logo"><b>MB</b> WORLD</div><p>지점장님들의 쉼터에 오신 걸 환영해요.<br>잠깐 머리 식히고, 천천히 쉬어가세요 ☕</p>';
   $('#enter').textContent=mode==='edit'?'저장':'입장하기';$('#jCancel').style.display=mode==='edit'?'block':'none';
   $('#codeWrap').style.display=(mode==='join'&&needCode)?'block':'none';
   if(mode==='edit'){$('#jn').value=me.n;$('#jp').value=me.p;pick=me.c;paintSw();}
