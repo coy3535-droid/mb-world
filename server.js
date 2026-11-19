@@ -37,6 +37,17 @@ const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f​-‏‪-
 const color = c => (/^#[0-9a-f]{6}$/i.test(c) ? c : '#c9ced6');
 const num = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(+v || 0)));
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+let WX = null;
+async function refreshWeather() {
+  try {
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.978&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSeoul&forecast_days=1', { signal: AbortSignal.timeout(8000) });
+    const j = await r.json();
+    const w = { code: j.daily.weather_code[0], now: j.current.weather_code, t: Math.round(j.current.temperature_2m), tmax: Math.round(j.daily.temperature_2m_max[0]), tmin: Math.round(j.daily.temperature_2m_min[0]), pop: (j.daily.precipitation_probability_max || [null])[0], day: kstDay(), at: Date.now() };
+    const changed = !WX || WX.code !== w.code || WX.t !== w.t; WX = w;
+    if (changed && typeof broadcast === 'function') broadcast({ type: 'weather', wx: WX });
+  } catch (e) { console.log('weather fetch failed', e.message); }
+}
+setTimeout(refreshWeather, 500); setInterval(refreshWeather, 20 * 60e3);
 function normStats(s) {
   if (!s || typeof s !== 'object') return null;
   const d = s.day && typeof s.day === 'object' ? s.day : {};
@@ -108,6 +119,7 @@ else{sh.textContent='📤 공유 문구 복사';sh.addEventListener('click',func
 const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
   const u0 = new URL(req.url, 'http://x');
+  if (u0.pathname === '/weather') { res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(WX || {})); return; }
   if (u0.pathname === '/admin' || u0.pathname === '/admin/rotate' || u0.pathname === '/admin/news') {
     if (!ADMIN_KEY || !LINK_SECRET || !safeEq(u0.searchParams.get('key') || '', ADMIN_KEY)) { res.writeHead(404); res.end('not found'); return; }
     if (u0.pathname === '/admin/rotate' && req.method === 'POST') {
@@ -210,7 +222,7 @@ wss.on('connection', ws => {
       send(ws, {
         type: 'welcome', id: c.id,
         peers: [...online.values()].filter(o => o.joined && o !== c).map(peerOf),
-        history: store.chat.slice(-80), board: boardPayload(), news: store.news || [], mystats: rec ? rec.st : null,
+        history: store.chat.slice(-80), board: boardPayload(), news: store.news || [], wx: WX, mystats: rec ? rec.st : null,
       });
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
       return;
