@@ -834,7 +834,7 @@ function makeAvatar(key,self){
   const a={key,g:c.g,up:c.up,legs:c.legs,arms:c.arms,headG:c.headG,accentMat:c.accentMat,tag,tn,ts,bub:null,bubT:0,x:0,y:0,tx:0,ty:0,h:0,th:0,phase:Math.random()*6,moving:false,self,sit:false,bowT:0};
   AV.set(key,a);return a;}
 function setLook(a,n,p,c){if(a.n!==n){a.n=n;a.tn.textContent=n||'?';}if(a.p!==p){a.p=p;a.ts.textContent=p||'';a.ts.style.display=p?'block':'none';}if(a.c!==c){a.c=c;a.accentMat.color.set(c);}}
-function removeAvatar(key){const a=AV.get(key);if(!a)return;scene.remove(a.g);if(a.car)scene.remove(a.car);a.accentMat.dispose();a.tag.remove();a.bub?.remove();AV.delete(key);}
+function removeAvatar(key){const a=AV.get(key);if(!a||a.self||a===meAv)return;scene.remove(a.g);if(a.car)scene.remove(a.car);a.accentMat.dispose();a.tag.remove();a.bub?.remove();AV.delete(key);}
 function showBubble(key,text){const a=AV.get(key);if(!a)return;if(!a.bub){a.bub=document.createElement('div');a.bub.className='bub';ov.append(a.bub);}a.bub.textContent=text;a.bub.style.opacity=1;a.bubT=performance.now();}
 function showEmote(key,e){const a=AV.get(key);if(!a)return;const d=document.createElement('div');d.className='emo';d.textContent=e;ov.append(d);a.emo=d;a.emoT=performance.now();setTimeout(()=>{d.remove();if(a.emo===d)a.emo=null;},3300);}
 
@@ -895,12 +895,12 @@ function initWS(){
   ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(e){return;}
     if(m.type==='hello_req'){needCode=!!m.needCode;$('#codeWrap').style.display=needCode?'block':'none';if(joined)sendHello();}
     else if(m.type==='denied'){welcomed=false;if(joined){joined=false;openProfile('join');}$('#jerr').textContent=m.reason==='code'?'입장 코드가 맞지 않아요.':'입장할 수 없어요.';}
-    else if(m.type==='welcome'){welcomed=true;const old=myKey;myKey=m.id;if(meAv){AV.delete(old);AV.set(myKey,meAv);meAv.key=myKey;}
+    else if(m.type==='welcome'){welcomed=true;const old=myKey;myKey=m.id;if(meAv){AV.delete(old);AV.set(myKey,meAv);meAv.key=myKey;if(!meAv.g.parent)scene.add(meAv.g);meAv.g.visible=!race.on;}
       for(const k of [...AV.keys()])if(k!==myKey)removeAvatar(k);
       (m.peers||[]).forEach(p=>upsertPeer(p.id,p));(m.history||[]).forEach(x=>addMsg({...x,_id:x.id}));if(m.board)applyBoard(m.board);if(m.news)setNews(m.news);statsReady(m.mystats||null);
       setConn(true);$('#join').classList.add('hide');push(true);}
     else if(m.type==='peer') upsertPeer(m.id,m);
-    else if(m.type==='leave'){removeAvatar(m.id);peopleDirty=true;}
+    else if(m.type==='leave'){if(m.id!==myKey)removeAvatar(m.id);peopleDirty=true;}
     else if(m.type==='chat'&&m.m) addMsg({...m.m,_id:m.m.id});
     else if(m.type==='board')applyBoard(m);
     else if(m.type==='news')setNews(m.items);
@@ -1562,7 +1562,7 @@ Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(bui
 requestAnimationFrame(step);
 if(MODE==='artifact')initArtifact();else if(MODE==='ws')initWS();else{setConn(false,'혼자 둘러보는 중');statsReady(null);}
 renderLog();
-if(/[?&]debug\b/.test(location.search))window.__mb={me,openAct,race,driveEnter,raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
+if(/[?&]debug\b/.test(location.search))window.__mb={me,openAct,race,driveEnter,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
 })();
 </script>
 </body>

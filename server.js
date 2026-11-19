@@ -203,7 +203,7 @@ wss.on('connection', ws => {
       c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300);
       c.token = /^[a-z0-9]{8,64}$/i.test(m.token || '') ? m.token : crypto.randomBytes(12).toString('hex');
       // same person in another tab: keep only the newest
-      for (const [ows, oc] of online) if (ows !== ws && oc.token === c.token && oc.joined) { oc.joined = false; broadcast({ type: 'leave', id: oc.id }); ows.close(4000, 'replaced'); }
+      for (const [ows, oc] of online) if (ows !== ws && oc.token === c.token && oc.joined) { oc.joined = false; broadcast({ type: 'leave', id: oc.id }, ws); ows.close(4000, 'replaced'); }
       c.joined = true;
       const rec = store.players[c.token];
       if (rec) { rec.n = c.n; rec.p = c.p; rec.c = c.c; }
