@@ -42,10 +42,11 @@ async function refreshWeather() {
   try {
     const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.978&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSeoul&forecast_days=1', { signal: AbortSignal.timeout(8000) });
     const j = await r.json();
+    if (!j.daily || !j.current) throw new Error('bad response ' + r.status + ' ' + JSON.stringify(j).slice(0, 160));
     const w = { code: j.daily.weather_code[0], now: j.current.weather_code, t: Math.round(j.current.temperature_2m), tmax: Math.round(j.daily.temperature_2m_max[0]), tmin: Math.round(j.daily.temperature_2m_min[0]), pop: (j.daily.precipitation_probability_max || [null])[0], day: kstDay(), at: Date.now() };
     const changed = !WX || WX.code !== w.code || WX.t !== w.t; WX = w;
     if (changed && typeof broadcast === 'function') broadcast({ type: 'weather', wx: WX });
-  } catch (e) { console.log('weather fetch failed', e.message); }
+  } catch (e) { console.log('weather fetch failed', e.message); setTimeout(refreshWeather, 3 * 60e3); }
 }
 setTimeout(refreshWeather, 500); setInterval(refreshWeather, 20 * 60e3);
 function normStats(s) {
