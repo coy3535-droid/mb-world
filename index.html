@@ -155,6 +155,7 @@ button.chip:hover{border-color:rgba(255,255,255,.25)}
     <button class="chip" id="inviteBtn" style="display:none">📱 초대</button>
     <div class="chip" id="myPts" title="정비 포인트 · 연속 출석">🔧 0P</div>
     <div class="chip" id="lapChip">🏁 0.0초</div>
+    <button class="chip" id="trBtn" style="display:none">💎 0/8</button>
     <button class="chip" id="wxBtn" style="display:none">☀️</button>
     <div class="chip" id="conn"><i></i><span>연결 중…</span></div>
   </div>
@@ -1149,13 +1150,13 @@ $('#copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('#invi
 /* ---------- activities ---------- */
 const kst=(o=0)=>new Date(Date.now()+9*3600e3+o).toISOString().slice(0,10);
 const today=()=>kst(0),yesterday=()=>kst(-864e5),dayNum=()=>Math.floor((Date.now()+9*3600e3)/864e5);
-const DEF_ST=()=>({pts:0,bolts:0,set:0,best:0,race:0,gp:0,streak:0,last:'',days:0,day:{d:'',polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0}});
+const DEF_ST=()=>({pts:0,bolts:0,set:0,best:0,race:0,gp:0,streak:0,last:'',days:0,day:{d:'',polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0,tr:0,ring:0}});
 let st=DEF_ST(),stLoaded=false,board={players:[],wishes:[],totalBolts:0};
 function normSt(s){const d=DEF_ST();if(!s||typeof s!=='object')return d;const n=(v,mx=1e9)=>Math.max(0,Math.min(mx,Math.floor(+v||0)));
-  const o={pts:n(s.pts),bolts:n(s.bolts),set:n(s.set,107),best:n(s.best,36e5),race:n(s.race,36e5),streak:n(s.streak,9999),last:typeof s.last==='string'?s.last.slice(0,10):'',days:n(s.days,99999),day:{...d.day}};
-  if(s.day&&typeof s.day==='object')o.day={d:String(s.day.d||'').slice(0,10),polish:n(s.day.polish,99),coffee:n(s.day.coffee,99),laps:n(s.day.laps,999),quiz:n(s.day.quiz,1),wish:n(s.day.wish,1),zen:n(s.day.zen,1)};
+  const o={pts:n(s.pts),bolts:n(s.bolts),set:n(s.set,107),best:n(s.best,36e5),race:n(s.race,36e5),gp:n(s.gp,36e5),streak:n(s.streak,9999),last:typeof s.last==='string'?s.last.slice(0,10):'',days:n(s.days,99999),day:{...d.day}};
+  if(s.day&&typeof s.day==='object')o.day={d:String(s.day.d||'').slice(0,10),polish:n(s.day.polish,99),coffee:n(s.day.coffee,99),laps:n(s.day.laps,999),quiz:n(s.day.quiz,1),wish:n(s.day.wish,1),zen:n(s.day.zen,1),tr:n(s.day.tr,1023),ring:n(s.day.ring,99)};
   return o;}
-function dayRoll(){if(st.day.d!==today())st.day={d:today(),polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0};}
+function dayRoll(){if(st.day.d!==today())st.day={d:today(),polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0,tr:0,ring:0};}
 let saveT=0;
 function saveSt(){updateHudPts();try{localStorage.setItem('mbworld.st',JSON.stringify(st));}catch(e){}clearTimeout(saveT);saveT=setTimeout(flushSt,1200);}
 async function flushSt(){
@@ -1627,6 +1628,55 @@ function dropTick(dt){const pl=drop.plane;drop.t+=dt;
   else{drop.ct+=dt;drop.alt-=4.6*dt;const sc=Math.min(1,drop.ct*2.4),ov=sc<1?1+Math.sin(sc*Math.PI)*.15:1;const c=drop.chute;c.scale.setScalar(sc*ov);
     c.position.set(U(me.x),drop.alt,U(me.y));c.rotation.set(Math.sin(drop.t*1.6)*.08-drop.vy/2600,meAv?meAv.g.rotation.y:0,Math.sin(drop.t*1.2)*.08+drop.vx/2600);
     const gy=floorY(me.x,me.y,inWater(me.x,me.y));if(drop.alt<=gy+.02){drop.alt=gy;dropEnd(true);}}}
+/* ---------- 오늘의 보물찾기 ---------- */
+const TR_N=8;let TRS=[],trDay='',trChipT=0;
+function seedRng(str){let h=2166136261>>>0;for(const ch of str){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}if(!h)h=1;return ()=>{h^=h<<13;h>>>=0;h^=h>>>17;h^=h<<5;h>>>=0;return (h%1000003)/1000003;};}
+function riverSide(r,out){const N=RIVER_PTS.length,i=Math.floor(r()*N),p=RIVER_PTS[i],a=RIVER_PTS[(i-1+N)%N],b=RIVER_PTS[(i+1)%N];const tx=b[0]-a[0],ty=b[1]-a[1],l=Math.hypot(tx,ty)||1,nx=-ty/l,ny=tx/l,d=(RIVER_HW+(out?70+r()*60:28+r()*14))*(out?-1:1);return [p[0]+nx*d,p[1]+ny*d];}
+const TR_AREAS=[
+  ['forest','🌲 서쪽 숲속 어딘가',r=>[-1700+r()*1650,-500+r()*2700]],
+  ['hill','⛰️ 북쪽 뒷산 언덕',r=>[-1300+r()*5100,-760+r()*620]],
+  ['town','🏘️ 햇살 주택가 골목',r=>[2470+r()*1720,220+r()*1060]],
+  ['meadow','🌼 남쪽 꽃 들판',r=>[-1600+r()*5700,1600+r()*1100]],
+  ['bank','🏖️ 강가 모래사장 (순환도로 바깥쪽)',r=>riverSide(r,false)],
+  ['across','🌉 강 건너 숲 (다리를 건너거나 헤엄쳐서)',r=>riverSide(r,true)],
+  ['tower','🗼 전망대 꼭대기 중 한 곳',r=>{const t=TOWERS[Math.floor(r()*TOWERS.length)],c=[[-1,-1],[-1,1],[1,1]][Math.floor(r()*3)];return [t.cx+c[0]*(t.S-30),t.cy+c[1]*(t.S-30)];}],
+  ['campus','🏢 MB 캠퍼스 산책로',r=>[60+r()*2280,60+r()*1380]]];
+function trValid(id,x,y){if(x<WB.x0+50||x>WB.x1-50||y<WB.y0+50||y>WB.y1-50)return false;if(hits(x,y,20)||inWater(x,y))return false;
+  if(id!=='tower'&&(towerAt(x,y)||zoneAt(x,y)&&!zoneAt(x,y).open))return false;if(roadDist(x,y)<ROAD_HW+12||ROADS.some(r=>inR(x,y,r,14)))return false;
+  if(SPOTS.some(s=>Math.hypot(s.x-x,s.y-y)<90))return false;return true;}
+function chest3(){const g=new THREE.Group();const wood=M('#7a4a26'),gold=new THREE.MeshStandardMaterial({color:'#f2c230',metalness:.9,roughness:.25,emissive:'#5a3a00',emissiveIntensity:.4});
+  const base=new THREE.Mesh(new THREE.BoxGeometry(1.1,.6,.75),wood);base.position.y=.3;base.castShadow=true;g.add(base);
+  for(const x of [-.42,.42]){const b=new THREE.Mesh(new THREE.BoxGeometry(.1,.62,.78),gold);b.position.set(x,.3,0);g.add(b);}
+  const lid=new THREE.Group();lid.position.set(0,.6,-.375);g.add(lid);
+  const lt=new THREE.Mesh(new THREE.CylinderGeometry(.375,.375,1.1,12,1,false,0,Math.PI),wood);lt.rotation.z=Math.PI/2;lt.position.z=.375;lt.castShadow=true;lid.add(lt);
+  for(const x of [-.42,.42]){const b=new THREE.Mesh(new THREE.CylinderGeometry(.385,.385,.1,12,1,false,0,Math.PI),gold);b.rotation.z=Math.PI/2;b.position.set(x,0,.375);lid.add(b);}
+  const lock=new THREE.Mesh(new THREE.BoxGeometry(.18,.22,.06),gold);lock.position.set(0,.5,.39);g.add(lock);
+  const glow=new THREE.Mesh(new THREE.SphereGeometry(.32,12,8),new THREE.MeshBasicMaterial({color:'#ffe58a',toneMapped:false,transparent:true,opacity:0}));glow.position.y=.75;g.add(glow);
+  const pillar=new THREE.Mesh(new THREE.CylinderGeometry(.5,.9,26,14,1,true),new THREE.MeshBasicMaterial({color:'#ffd65a',transparent:true,opacity:.16,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));pillar.position.y=13;g.add(pillar);
+  const spark=new THREE.Mesh(new THREE.OctahedronGeometry(.22,0),new THREE.MeshBasicMaterial({color:'#fff3c4',toneMapped:false}));spark.position.y=1.6;g.add(spark);
+  g.scale.setScalar(1.2);scene.add(g);return {g,lid,glow,pillar,spark};}
+function buildTreasures(){trDay=today();for(const t of TRS)scene.remove(t.m.g);TRS=[];const r=seedRng('mbworld-tr-'+trDay);
+  TR_AREAS.forEach(([id,hint,gen],i)=>{let p=null;for(let k=0;k<400&&!p;k++){const q=gen(r);if(trValid(id,q[0],q[1]))p=q;}if(!p)return;const m=chest3();m.g.position.set(U(p[0]),floorY(p[0],p[1]),U(p[1]));m.g.rotation.y=r()*6.28;
+    TRS.push({i,id,hint,x:p[0],y:p[1],m,open:0,got:false});});$('#trBtn').style.display='';}
+function trMask(){return stLoaded&&st.day&&st.day.d===today()?(st.day.tr|0):0;}
+function trFound(t){if(!stLoaded)return;dayRoll();st.day.tr=(st.day.tr|0)|(1<<t.i);const n=TRS.filter(q=>trMask()&(1<<q.i)).length;
+  chime();tok(1320,.35);setTimeout(()=>tok(1760,.3),120);buzz(40);
+  if(n>=TRS.length){gain(2+10,`🏆 오늘의 보물 ${TRS.length}개 모두 찾음!`);emote('🏆');}else gain(2,`💎 보물 발견! (${n}/${TRS.length}) · ${t.hint.replace(/^\S+\s/,'')}`);}
+function treasureTick(dt,tt){if(!TRS.length)return;if(trDay!==today()&&Math.floor(tt)%30===0)buildTreasures();
+  const mask=trMask();let near=null,nd=1e9;
+  for(const t of TRS){const got=!!(mask&(1<<t.i));const m=m0=>m0;t.open+=((got?1:0)-t.open)*Math.min(1,dt*4);t.m.lid.rotation.x=-t.open*1.9;
+    t.m.pillar.visible=!got;t.m.pillar.material.opacity=.12+Math.sin(tt*2+t.i)*.05;t.m.spark.visible=!got;t.m.spark.position.y=1.6+Math.sin(tt*3+t.i)*.2;t.m.spark.rotation.y+=dt*2;
+    t.m.glow.material.opacity=got?Math.max(0,.9-t.open*.9+(t.open<.98?.4:0))*(1-t.open):0;
+    if(!got&&joined&&!drop.on&&!race.on){const d=Math.hypot(me.x-t.x,me.y-t.y);if(d<nd){nd=d;near=t;}if(d<44&&Math.abs((meAv?meAv.g.position.y:0)-floorY(t.x,t.y))<1.5){trFound(t);}}}
+  trChipT-=dt;if(trChipT<=0){trChipT=.4;const n=TRS.filter(q=>mask&(1<<q.i)).length,b=$('#trBtn');let txt=`💎 ${n}/${TRS.length}`;
+    if(near&&nd<900){const a=Math.atan2(near.x-me.x,-(near.y-me.y)),ar=['⬆️','↗️','➡️','↘️','⬇️','↙️','⬅️','↖️'][((Math.round(a/(Math.PI/4))%8)+8)%8];txt+=` · ${ar} ${Math.max(1,Math.round(nd/20))}m`;}
+    else if(n>=TRS.length)txt+=' 완료!';if(b.textContent!==txt)b.textContent=txt;}}
+$('#trBtn').onclick=()=>{if(!joined)return;$('#act').classList.remove('hide');actOpen={id:'treasure'};const mask=trMask(),n=TRS.filter(q=>mask&(1<<q.i)).length;
+  const b=actShell('💎 오늘의 보물찾기',`MB World 곳곳에 보물상자 ${TRS.length}개가 숨어 있어요. (매일 자정에 위치가 바뀌어요)<br>금빛 기둥을 찾아 가까이 가면 열려요. 1개 <b>+2P</b>, 모두 찾으면 <b>+10P</b> 보너스!`);
+  const prog=el('div','cnt',`${n} / ${TRS.length}`);b.append(prog);
+  const list=el('div');list.style.cssText='display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px;text-align:left';
+  for(const t of TRS){const got=!!(mask&(1<<t.i)),d=Math.round(Math.hypot(me.x-t.x,me.y-t.y)/20);const row=el('div',null,`${got?'✅':'❔'} ${t.hint}${got?'':` <span style="color:var(--sub);font-size:12px">· 약 ${d}m</span>`}`);row.innerHTML=row.textContent.replace(/· 약 (\d+)m/,'<span style="color:#9aa0aa;font-size:12px">· 약 $1m</span>');row.style.cssText='background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px;font-size:13px'+(got?';opacity:.6':'');list.append(row);}
+  b.append(list);const tip=el('div','sub','상단 💎 칩의 화살표가 가장 가까운 보물 방향을 알려줘요 (화면 위쪽 = 북쪽)');tip.style.marginTop='10px';b.append(tip);closeBtn(b);};
 function resize(){const r=cv.getBoundingClientRect();renderer.setSize(r.width,r.height,false);if(composer){composer.setPixelRatio(Math.min(devicePixelRatio||1,MOBILE?1.25:1.75));composer.setSize(r.width,r.height);}camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();}
 addEventListener('resize',resize);new ResizeObserver(resize).observe(cv);
 const angLerp=(a,b,k)=>{let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*k;};
@@ -1682,6 +1732,7 @@ function step(now){
   {bbAcc=(bbAcc||0)+dt;if(bbAcc>.05){drawBillboard(bbAcc);bbAcc=0;}}
   for(const b of BRIDGES){if(!b.mats)continue;const under=meAv&&meAv.sw&&Math.abs(me.x-b.x)<BR_L+60&&Math.abs(me.y-b.y)<BR_L+60;const tg=under?.28:1;if(Math.abs(b.op-tg)>.01){b.op+=(tg-b.op)*Math.min(1,dt*6);for(const m of b.mats){m.opacity=b.op;m.depthWrite=b.op>.95;}}}
   for(const f of towerAnims)f(dt,tt);
+  treasureTick(dt,tt);
   if(millBlades)millBlades.rotation.z-=dt*.6;if(waterTex){waterTex.offset.x+=dt*.03;waterTex.offset.y+=dt*.01;}
   if(trackCar){const an=tt*.55,x=1200+Math.cos(an)*238,y=1250+Math.sin(an)*105;trackCar.position.set(U(x),0,U(y));trackCar.rotation.y=-Math.atan2(Math.cos(an)*105,-Math.sin(an)*238);}
   if(fountainJet){fountainJet.scale.y=1+Math.sin(tt*4)*.12;fRings.forEach((r,i)=>{const p=((tt*.5+i/3)%1);const s=U(20+p*52);r.scale.set(s,s,s);r.material.opacity=.55*(1-p);});}
@@ -1746,12 +1797,12 @@ function drawMini(){const sx=mini.width/(WB.x1-WB.x0),sy=mini.height/(WB.y1-WB.y
 
 /* ---------- boot ---------- */
 resize();
-let built=false;const build=()=>{if(built)return;built=true;buildWorld();buildExpansion();buildBillboard();buildDriveStation();buildMiniBg();buildSpots();scene.traverse(o=>{const m=o.material;if(m&&m.isMeshStandardMaterial){m.envMapIntensity=m.isMeshPhysicalMaterial?1.0:(m.metalness>.5?.8:.28);m.needsUpdate=true;}});$('#loading').remove();};
+let built=false;const build=()=>{if(built)return;built=true;buildWorld();buildExpansion();buildBillboard();buildDriveStation();buildTreasures();buildMiniBg();buildSpots();scene.traverse(o=>{const m=o.material;if(m&&m.isMeshStandardMaterial){m.envMapIntensity=m.isMeshPhysicalMaterial?1.0:(m.metalness>.5?.8:.28);m.needsUpdate=true;}});$('#loading').remove();};
 Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(build);
 requestAnimationFrame(step);
 if(MODE==='artifact')initArtifact();else if(MODE==='ws')initWS();else{setConn(false,'혼자 둘러보는 중');statsReady(null);}
 renderLog();
-if(/[?&]debug\b/.test(location.search))window.__mb={me,openAct,race,driveEnter,raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
+if(/[?&]debug\b/.test(location.search))window.__mb={me,get meAv(){return meAv},openAct,race,driveEnter,get TRS(){return TRS},get st(){return st},raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
 })();
 </script>
 </body>
