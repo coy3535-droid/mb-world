@@ -844,7 +844,7 @@ function chibi({uniform='#e4e7ec',accent='#00adef',hair='#3a2a20',cap=null,self=
     const hl=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),new THREE.MeshBasicMaterial({color:'#ffffff'}));hl.position.set(x+.025,.01,.585);headG.add(hl);
     const b=new THREE.Mesh(G.blush,new THREE.MeshBasicMaterial({color:'#ff9a8f',transparent:true,opacity:.5,depthWrite:false}));b.position.set(x*1.55,-.18,.5);b.rotation.y=x*1.15;headG.add(b);}
   const mo=new THREE.Mesh(G.mouth,M('#7a3b2e'));mo.position.set(0,-.2,.56);mo.rotation.z=Math.PI;headG.add(mo);
-  if(self){const ring=new THREE.Mesh(new THREE.TorusGeometry(.7,.045,6,40),M('#00adef',{emissive:'#00adef',emissiveIntensity:1.2}));ring.rotation.x=-Math.PI/2;ring.position.y=.04;g.add(ring);}
+  if(self){const ring=new THREE.Mesh(new THREE.TorusGeometry(.7,.045,6,40),M('#00adef',{emissive:'#00adef',emissiveIntensity:1.2}));ring.rotation.x=-Math.PI/2;ring.position.y=.04;g.add(ring);g.userData.ring=ring;}
   return {g,up,legs,arms,headG,accentMat};}
 function makeAvatar(key,self){
   const c=chibi({self});scene.add(c.g);
@@ -867,7 +867,8 @@ const MODE=(window.claude&&typeof window.claude.use==='function')?'artifact':(/^
 let room=null,db=null,myKey='me-local',myId=null,ws=null,needCode=false,accessCode='',lastSent=0,welcomed=false;
 function setConn(on,label){const el=$('#conn');el.classList.toggle('on',!!on);el.querySelector('span').textContent=label||(on?'실시간 연결됨':'연결 중…');}
 function stateObj(){return {n:me.n,p:me.p,c:me.c,x:Math.round(me.x),y:Math.round(me.y),h:Math.round(me.h*100)/100,m:me.moving?1:0,s:me.sit?1:0,v:race.on?({sedan:2,bike:3}[race.mode]||1):0,ca:Math.round(race.a*100)/100,e:me.e,et:me.et};}
-function push(force){
+const drop={on:false,phase:'',t:0,alt:0,vx:0,vy:0,plane:null,chute:null,ui:null};
+function push(force){if(drop.on)return;
   if(!joined)return;const now=performance.now();if(!force&&now-lastSent<70)return;lastSent=now;
   if(MODE==='artifact'&&room) room.presence({...stateObj(),id:myId}).catch(()=>{});
   else if(MODE==='ws'&&ws&&ws.readyState===1&&welcomed) ws.send(JSON.stringify({type:'state',...stateObj()}));
@@ -993,6 +994,7 @@ function visit(k){const a=AV.get(k);if(!a)return;for(let i=0;i<50;i++){const an=
 const typing=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
 addEventListener('keydown',e=>{
   if(!joined)return;
+  if(drop.on){if(drop.phase==='plane'&&(e.key===' '||e.key==='Enter')){e.preventDefault();dropJump();}return;}
   if($('#phrases').classList.contains('open')){if(e.key==='Escape')closePhrases();return;}
   if(actOpen){if(e.key==='Escape'){if(actOpen.id==='race')raceExit();else closeAct();}else if((e.key===' '||e.key==='Enter')&&actOpen.key&&!typing()){e.preventDefault();if(!e.repeat)actOpen.key();}return;}
   if(typing()){if(e.key==='Escape')document.activeElement.blur();return;}
@@ -1006,7 +1008,7 @@ addEventListener('keydown',e=>{if(e.key==='Shift')sprint=true;});let sprint=fals
 addEventListener('blur',()=>{keys.clear();sprint=false;});
 const ptrs=new Map();let pinch0=0,zoom0=1;
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),0),hitV=new THREE.Vector3();
-cv.addEventListener('pointerdown',e=>{cv.setPointerCapture?.(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY});
+cv.addEventListener('pointerdown',e=>{if(drop.on&&drop.phase==='plane'){dropJump();return;}cv.setPointerCapture?.(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY});
   if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);zoom0=zoomF;}if(typing())document.activeElement.blur();});
 cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)return;p.x=e.clientX;p.y=e.clientY;
   if(ptrs.size===2&&pinch0){const [a,b]=[...ptrs.values()];zoomF=clamp(zoom0*pinch0/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y)),.55,3.6);}});
@@ -1042,7 +1044,7 @@ function submitProfile(){
   if(!meAv){meAv=makeAvatar(myKey,true);}
   setLook(meAv,me.n,me.p,me.c);peopleDirty=true;
   if(pmode==='edit'){$('#join').classList.add('hide');if(MODE==='ws'&&ws&&ws.readyState===1&&welcomed)ws.send(JSON.stringify({type:'profile',n:me.n,p:me.p,c:me.c}));push(true);if(stLoaded)saveSt();return;}
-  if(!joined){spawn();meAv.x=me.x;meAv.y=me.y;joined=true;joinedAt=Date.now();attendance();}
+  if(!joined){spawn();meAv.x=me.x;meAv.y=me.y;joined=true;joinedAt=Date.now();attendance();setTimeout(startDrop,350);}
   if(MODE==='ws'){if(ws&&ws.readyState===1)sendHello();else $('#jerr').textContent='서버에 연결 중이에요. 잠시 후 자동으로 입장합니다.';}
   else{$('#join').classList.add('hide');push(true);}
   renderLog();cv.focus();}
@@ -1509,12 +1511,67 @@ async function loadWeather(){try{let w=null;
     applyWeather(w);}catch(e){}}
 $('#wxBtn').onclick=()=>{if(!WX)return;const P=WXP[wxKind(WX.code)];toast(`${P.e} 오늘 서울: ${P.n} · 지금 ${WX.t}° (최저 ${WX.tmin}° / 최고 ${WX.tmax}°)${WX.pop!=null?` · 강수확률 ${WX.pop}%`:''}`);};
 loadWeather();setInterval(loadWeather,30*60e3);
+/* ---------- 입장 낙하산 (스카이다이빙) ---------- */
+const DROP_A={x:-1600,y:520},DROP_B={x:4000,y:1180},DROP_ALT=72,DROP_SPD=620;
+function buildPlane(){const g=new THREE.Group();const white=new THREE.MeshPhysicalMaterial({color:'#f4f6f8',roughness:.3,metalness:.2,clearcoat:1}),cyan=M('#00adef',{flatShading:false}),dark=M('#22252b',{flatShading:false}),glass=new THREE.MeshPhysicalMaterial({color:'#0d1722',roughness:.05,metalness:.5});
+  const fus=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.0,9,20),white);fus.rotation.z=Math.PI/2;g.add(fus);
+  const nose=new THREE.Mesh(new THREE.SphereGeometry(1.1,20,14,0,Math.PI*2,0,Math.PI/2),white);nose.rotation.z=-Math.PI/2;nose.position.x=4.5;g.add(nose);
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(1.0,3,20),white);tail.rotation.z=Math.PI/2;tail.position.x=-6;g.add(tail);
+  const stripe=new THREE.Mesh(new THREE.CylinderGeometry(1.12,1.12,8.6,20,1,true,Math.PI*.42,Math.PI*.16),cyan);stripe.rotation.z=Math.PI/2;g.add(stripe);
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(2.6,.18,13),white);wing.position.set(.4,-.3,0);g.add(wing);
+  for(const z of [-6.5,6.5]){const tip=new THREE.Mesh(new THREE.BoxGeometry(1.4,.6,.12),cyan);tip.position.set(-.1,.0,z);g.add(tip);}
+  const fin=new THREE.Mesh(new THREE.BoxGeometry(1.8,2.2,.16),cyan);fin.position.set(-6.4,1.3,0);fin.rotation.z=.35;g.add(fin);
+  const st=new THREE.Mesh(new THREE.BoxGeometry(1.4,.14,4.6),white);st.position.set(-6.6,.3,0);g.add(st);
+  const cock=new THREE.Mesh(new THREE.SphereGeometry(.8,16,10,0,Math.PI*2,0,Math.PI/2),glass);cock.scale.set(1.6,.7,.9);cock.position.set(3.1,.75,0);g.add(cock);
+  for(let i=0;i<5;i++)for(const z of [-1.02,1.02]){const w=new THREE.Mesh(new THREE.BoxGeometry(.45,.35,.05),glass);w.position.set(1.8-i*1.1,.35,z);g.add(w);}
+  for(const z of [-3,3]){const eng=new THREE.Mesh(new THREE.CylinderGeometry(.42,.48,1.8,14),dark);eng.rotation.z=Math.PI/2;eng.position.set(1.0,-.85,z);g.add(eng);}
+  const door=new THREE.Mesh(new THREE.BoxGeometry(1.0,1.1,.05),dark);door.position.set(-2.6,.1,1.06);g.add(door);
+  g.traverse(o=>{if(o.isMesh){o.castShadow=true;}});scene.add(g);return g;}
+function buildChute(col){const g=new THREE.Group();
+  const can=new THREE.Mesh(new THREE.SphereGeometry(2.5,16,8,0,Math.PI*2,0,Math.PI*.42),new THREE.MeshStandardMaterial({color:col,roughness:.6,side:THREE.DoubleSide,flatShading:true}));can.scale.set(1.25,.6,.9);can.position.y=3.6;g.add(can);
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(2.52,16,4,0,Math.PI*2,0,Math.PI*.14),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.6,side:THREE.DoubleSide}));cap.scale.copy(can.scale);cap.position.y=3.6;g.add(cap);
+  const lm=new THREE.LineBasicMaterial({color:'#e9ebef',transparent:true,opacity:.8});
+  for(const [x,z] of [[-2.6,-1.5],[2.6,-1.5],[-2.6,1.5],[2.6,1.5],[0,-2.1],[0,2.1]]){const gm=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,4.4,z),new THREE.Vector3(x*.08,1.55,z*.08)]);g.add(new THREE.Line(gm,lm));}
+  g.scale.setScalar(.01);scene.add(g);return g;}
+function dropUI(html,btns){if(!drop.ui){const d=document.createElement('div');d.style.cssText='position:fixed;left:50%;bottom:calc(var(--T,0px) + 118px);transform:translateX(-50%);z-index:40;background:rgba(14,15,18,.82);backdrop-filter:blur(10px);color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:14px 18px;text-align:center;font-size:14px;line-height:1.6;min-width:260px;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.35)';document.body.append(d);drop.ui=d;}
+  const d=drop.ui;d.style.display='block';d.innerHTML=html;if(btns){const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;justify-content:center;margin-top:10px';for(const [t,fn,ghost] of btns){const b=document.createElement('button');b.className='btn'+(ghost?' ghost':'');b.style.cssText='margin:0;padding:10px 16px;width:auto;'+(ghost?'color:#cfd3da':'');b.textContent=t;b.onclick=e=>{e.stopPropagation();fn();};row.append(b);}d.append(row);}}
+function startDrop(){if(drop.on||race.on)return;
+  drop.plane=drop.plane||buildPlane();drop.plane.visible=true;Object.assign(drop,{on:true,phase:'plane',t:0,alt:DROP_ALT,vx:0,vy:0,sx:me.x,sy:me.y});
+  const dx=DROP_B.x-DROP_A.x,dy=DROP_B.y-DROP_A.y,L=Math.hypot(dx,dy);drop.dir=[dx/L,dy/L];drop.len=L;
+  drop.plane.rotation.y=-Math.atan2(dy,dx);$('#actBtn').style.display='none';
+  dropUI('✈️ <b>MB World 상공</b>이에요!<br>원하는 곳 위에서 뛰어내리세요 🪂<div style="font-size:12px;color:#aab0ba;margin-top:2px">'+(MOBILE?'버튼이나 화면을 탭':'Space 키나 화면 클릭')+'</div>',[['🪂 뛰어내리기',dropJump],['건너뛰기',dropSkip,true]]);
+  toast('✈️ 비행기가 MB World 위를 지나가는 중!');}
+function dropJump(){if(!drop.on||drop.phase!=='plane')return;drop.phase='fall';drop.vx=drop.dir[0]*DROP_SPD*.45;drop.vy=drop.dir[1]*DROP_SPD*.45;drop.alt=DROP_ALT-1.5;
+  dropUI('🪂 <b>자유낙하!</b> '+(MOBILE?'조이스틱':'WASD·방향키')+'로 방향을 잡아요<div style="font-size:12px;color:#aab0ba">곧 낙하산이 펴져요</div>');tok(500,.3);buzz(30);}
+function dropSkip(){if(!drop.on)return;me.x=drop.sx;me.y=drop.sy;dropEnd(false);}
+function dropEnd(landed){drop.on=false;drop.phase='';if(drop.plane)drop.plane.visible=false;if(drop.chute)drop.chute.visible=false;if(drop.ui)drop.ui.style.display='none';
+  if(hits(me.x,me.y)){for(let i=1;i<120;i++){const a=i*2.4,d=12+i*4,nx=me.x+Math.cos(a)*d,ny=me.y+Math.sin(a)*d;if(!hits(nx,ny)){me.x=nx;me.y=ny;break;}}}
+  if(meAv){meAv.g.visible=true;meAv.x=meAv.tx=me.x;meAv.y=meAv.ty=me.y;}target=null;me.moving=false;push(true);
+  if(landed){chime();emote('🪂');toast('🪂 착지 성공! 오늘도 반가워요');}}
+function dropTick(dt){const pl=drop.plane;drop.t+=dt;
+  if(drop.phase==='plane'){const d=Math.min(drop.len,drop.t*DROP_SPD),x=DROP_A.x+drop.dir[0]*d,y=DROP_A.y+drop.dir[1]*d;pl.position.set(U(x),DROP_ALT+Math.sin(drop.t*1.3)*.25,U(y));pl.rotation.x=Math.sin(drop.t*.9)*.04;
+    me.x=x;me.y=y;if(meAv){meAv.x=meAv.tx=x;meAv.y=meAv.ty=y;}if(d>=drop.len-200)dropJump();return;}
+  // plane flies on
+  {const d=drop.t*DROP_SPD,x=DROP_A.x+drop.dir[0]*d,y=DROP_A.y+drop.dir[1]*d;pl.position.set(U(x),DROP_ALT+drop.t*.4,U(y));if(d>drop.len+3000)pl.visible=false;}
+  let ix=0,iy=0;if(keys.has('arrowleft')||keys.has('a'))ix--;if(keys.has('arrowright')||keys.has('d'))ix++;if(keys.has('arrowup')||keys.has('w'))iy--;if(keys.has('arrowdown')||keys.has('s'))iy++;
+  if(joy.on&&Math.hypot(joy.x,joy.y)>.15){ix=joy.x;iy=joy.y;}const il=Math.hypot(ix,iy);if(il>1){ix/=il;iy/=il;}
+  const fall=drop.phase==='fall',MAXH=fall?340:190,acc=fall?380:260;
+  drop.vx+=(ix*MAXH-drop.vx)*Math.min(1,dt*(il?1.8:.8));drop.vy+=(iy*MAXH-drop.vy)*Math.min(1,dt*(il?1.8:.8));
+  if(il)me.h=Math.atan2(ix,iy);
+  const nx=me.x+drop.vx*dt,ny=me.y+drop.vy*dt;me.x=Math.max(WB.x0+60,Math.min(WB.x1-60,nx));me.y=Math.max(WB.y0+60,Math.min(WB.y1-60,ny));
+  if(meAv){meAv.x=meAv.tx=me.x;meAv.y=meAv.ty=me.y;meAv.th=me.h;meAv.moving=false;}
+  if(fall){drop.alt-=Math.min(17,4+drop.t*9)*dt;if(drop.alt<30){drop.phase='chute';drop.chute=drop.chute||buildChute('#00adef');drop.chute.visible=true;drop.chute.scale.setScalar(.01);drop.ct=0;
+      dropUI('🪂 낙하산 펼침! 천천히 내려가는 중…<div style="font-size:12px;color:#aab0ba">착지할 곳을 골라보세요</div>');tok(220,.35);buzz(20);}}
+  else{drop.ct+=dt;drop.alt-=4.6*dt;const sc=Math.min(1,drop.ct*2.4),ov=sc<1?1+Math.sin(sc*Math.PI)*.15:1;const c=drop.chute;c.scale.setScalar(sc*ov);
+    c.position.set(U(me.x),drop.alt,U(me.y));c.rotation.set(Math.sin(drop.t*1.6)*.08-drop.vy/2600,meAv?meAv.g.rotation.y:0,Math.sin(drop.t*1.2)*.08+drop.vx/2600);
+    const gy=floorY(me.x,me.y,inWater(me.x,me.y));if(drop.alt<=gy+.02){drop.alt=gy;dropEnd(true);}}}
 function resize(){const r=cv.getBoundingClientRect();renderer.setSize(r.width,r.height,false);if(composer){composer.setPixelRatio(Math.min(devicePixelRatio||1,MOBILE?1.25:1.75));composer.setSize(r.width,r.height);}camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();}
 addEventListener('resize',resize);new ResizeObserver(resize).observe(cv);
 const angLerp=(a,b,k)=>{let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return a+d*k;};
 function step(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;tt+=dt;
-  if(joined&&race.on){if(race.mode==='track')raceTick(dt);else driveTick(dt);}
+  if(joined&&drop.on){dropTick(dt);}
+  else if(joined&&race.on){if(race.mode==='track')raceTick(dt);else driveTick(dt);}
   else if(joined){
     let vx=0,vy=0;
     if(keys.has('arrowleft')||keys.has('a'))vx--;if(keys.has('arrowright')||keys.has('d'))vx++;if(keys.has('arrowup')||keys.has('w'))vy--;if(keys.has('arrowdown')||keys.has('s'))vy++;
@@ -1541,6 +1598,9 @@ function step(now){
     const swim=!a.veh&&!!a.sw,fy=floorY(a.x,a.y,swim);
     if(a.self&&swim!==a.wasSwim&&joined){if(swim){toast('🏊 풍덩! 천천히 헤엄쳐 보세요');tok(300,.25);}a.wasSwim=swim;}
     a.g.position.set(U(a.x),fy+(a.sit?-.3:0)+(swim?Math.sin(now/420+a.phase)*.07:0),U(a.y));a.g.rotation.y=a.h;
+    if(a.g.userData.ring)a.g.userData.ring.visible=!(a.self&&drop.on);
+    if(a.self&&drop.on){a.g.visible=drop.phase!=='plane';a.g.position.y=drop.alt;if(a.rip)a.rip.visible=false;const fall=drop.phase==='fall',fl=Math.sin(now/90)*.12;
+      a.up.rotation.x=fall?1.25:0;a.up.position.y=.42;a.arms[0].rotation.x=a.arms[1].rotation.x=fall?-1.5+fl:-2.9;a.legs[0].rotation.x=fall?.5+fl:.25;a.legs[1].rotation.x=fall?.5-fl:-.15;a.headG.rotation.z=0;continue;}
     if(swim){if(!a.rip){a.rip=new THREE.Mesh(new THREE.RingGeometry(.55,.72,32),new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:.5,depthWrite:false}));a.rip.rotation.x=-Math.PI/2;scene.add(a.rip);}
       a.rip.visible=true;const rp=(now/900+a.phase*.1)%1;a.rip.position.set(U(a.x),.1,U(a.y));a.rip.scale.setScalar(.8+rp*1.4);a.rip.material.opacity=.55*(1-rp);}
     else if(a.rip)a.rip.visible=false;
@@ -1563,7 +1623,12 @@ function step(now){
   if(fountainJet){fountainJet.scale.y=1+Math.sin(tt*4)*.12;fRings.forEach((r,i)=>{const p=((tt*.5+i/3)%1);const s=U(20+p*52);r.scale.set(s,s,s);r.material.opacity=.55*(1-p);});}
   // camera
   const fx=meAv?U(meAv.x):U(1200),fz=meAv?U(meAv.y):U(860);
-  if(race.on){const ca=Math.cos(race.a),sa=Math.sin(race.a),sp=Math.abs(race.v)/330;
+  if(drop.on){const pl=drop.plane;let want,lk;
+    if(drop.phase==='plane'){const px=pl.position.x,py=pl.position.y,pz=pl.position.z;want=new THREE.Vector3(px-13,py+5,pz+11);lk=new THREE.Vector3(px+3,py-1,pz);}
+    else{const ch=drop.phase==='chute';want=new THREE.Vector3(fx,drop.alt+(ch?10:7.5),fz+(ch?18:12));lk=new THREE.Vector3(fx,Math.max(0,drop.alt-(ch?3:7)),fz-2);}
+    camPos.lerp(want,1-Math.exp(-dt*(drop.phase==='plane'?8:4)));camera.position.copy(camPos);camLook.lerp(lk,1-Math.exp(-dt*8));camera.lookAt(camLook);
+    const fov=MOBILE?60:54;if(Math.abs(camera.fov-fov)>.1){camera.fov+=(fov-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
+  else if(race.on){const ca=Math.cos(race.a),sa=Math.sin(race.a),sp=Math.abs(race.v)/330;
     const want=new THREE.Vector3(fx-ca*(6.2+sp*1.5),3.0+sp*.4,fz-sa*(6.2+sp*1.5));camPos.lerp(want,1-Math.exp(-dt*6));camera.position.copy(camPos);
     look.set(fx+ca*4,.9,fz+sa*4);camLook.lerp(look,1-Math.exp(-dt*9));camera.lookAt(camLook);
     const fov=(MOBILE?52:46)+sp*16;if(Math.abs(camera.fov-fov)>.1){camera.fov+=(fov-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
@@ -1575,7 +1640,7 @@ function step(now){
   }
   if(heroCar){heroCar.rotation.y+=dt*.35;}if(hallCone)hallCone.material.opacity=.05+Math.sin(tt*1.3)*.012;
   fadeTick(fx,fz,dt);
-  {const zf=Math.max(1,zoomF*(camMode==='top'?1.1:.85));scene.fog.near=55*zf*WXF.near;scene.fog.far=150*zf*WXF.far;}
+  {const zf=Math.max(1,zoomF*(camMode==='top'?1.1:.85));scene.fog.near=55*zf*WXF.near*(drop.on?2.6:1);scene.fog.far=150*zf*WXF.far*(drop.on?2.6:1);}
   wxTick(dt);
   sun.position.set(fx-22,34,fz+14);sun.target.position.set(fx,0,fz);
   {const inHall=meAv&&zoneAt(meAv.x,meAv.y)?.id==='hall';const k=Math.min(1,dt*2.5);
@@ -1587,7 +1652,7 @@ function step(now){
   // overlays
   const rw=cv.clientWidth,rh=cv.clientHeight;
   for(const a of AV.values()){
-    pv.set(U(a.x),a.sit?2.3:2.6,U(a.y)).project(camera);const vis=pv.z<1&&pv.x>-1.2&&pv.x<1.2&&pv.y>-1.2&&pv.y<1.3;
+    pv.set(U(a.x),(a.self&&drop.on?drop.alt+(drop.phase==='chute'?-.2:.4):a.g.position.y)+(a.sit?2.3:2.6),U(a.y)).project(camera);const vis=pv.z<1&&pv.x>-1.2&&pv.x<1.2&&pv.y>-1.2&&pv.y<1.3;
     const sx=(pv.x+1)/2*rw,sy=(1-pv.y)/2*rh;
     a.tag.style.display=vis?'':'none';if(vis)a.tag.style.transform=`translate(${sx}px,${sy}px) translate(-50%,-100%)`;a.tag.style.left='0';a.tag.style.top='0';
     if(a.bub){const age=now-a.bubT;if(age>7000){a.bub.remove();a.bub=null;}else{a.bub.style.display=vis?'':'none';a.bub.style.left='0';a.bub.style.top='0';a.bub.style.transform=`translate(${sx}px,${sy-(a.tag.offsetHeight+8)}px) translate(-50%,-100%)`;if(age>6200)a.bub.style.opacity=0;}}
@@ -1620,7 +1685,7 @@ Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(bui
 requestAnimationFrame(step);
 if(MODE==='artifact')initArtifact();else if(MODE==='ws')initWS();else{setConn(false,'혼자 둘러보는 중');statsReady(null);}
 renderLog();
-if(/[?&]debug\b/.test(location.search))window.__mb={me,openAct,race,driveEnter,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
+if(/[?&]debug\b/.test(location.search))window.__mb={me,openAct,race,driveEnter,drop,dropJump,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
 })();
 </script>
 </body>
