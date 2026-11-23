@@ -53,7 +53,7 @@ function normStats(s) {
   if (!s || typeof s !== 'object') return null;
   const d = s.day && typeof s.day === 'object' ? s.day : {};
   return {
-    pts: num(s.pts, 0, 1e9), bolts: num(s.bolts, 0, 1e9), set: num(s.set, 0, 107), best: num(s.best, 0, 36e5), race: num(s.race, 0, 36e5),
+    pts: num(s.pts, 0, 1e9), bolts: num(s.bolts, 0, 1e9), set: num(s.set, 0, 107), best: num(s.best, 0, 36e5), race: num(s.race, 0, 36e5), gp: num(s.gp, 0, 36e5),
     streak: num(s.streak, 0, 9999), last: clean(s.last, 10), days: num(s.days, 0, 99999),
     day: { d: clean(d.d, 10), polish: num(d.polish, 0, 99), coffee: num(d.coffee, 0, 99), laps: num(d.laps, 0, 999), quiz: num(d.quiz, 0, 1), wish: num(d.wish, 0, 1), zen: num(d.zen, 0, 1) },
   };
@@ -186,7 +186,7 @@ function peerOf(c) { return { id: c.id, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, 
 function boardPayload() {
   const players = Object.entries(store.players).map(([tok, p]) => ({
     id: [...online.values()].find(c => c.token === tok)?.id || 'x' + tok.slice(0, 6),
-    n: p.n, p: p.p, c: p.c, pts: p.st.pts, bolts: p.st.bolts, best: p.st.race || 0, streak: p.st.streak,
+    n: p.n, p: p.p, c: p.c, pts: p.st.pts, bolts: p.st.bolts, best: p.st.gp || 0, streak: p.st.streak,
   }));
   const totalBolts = players.reduce((a, p) => a + p.bolts, 0);
   const top = [...players].sort((a, b) => b.pts - a.pts).slice(0, 10);
