@@ -217,7 +217,7 @@ const online = new Map(); // ws -> client
 
 function send(ws, obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 function broadcast(obj, except) { const s = JSON.stringify(obj); for (const ws of online.keys()) if (ws !== except && ws.readyState === 1) ws.send(s); }
-function peerOf(c) { return { id: c.id, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, s: c.s || 0, v: c.v || 0, ca: c.ca || 0, e: c.e, et: c.et }; }
+function peerOf(c) { return { id: c.id, lv: c.lv || 0, sk: c.sk || 0, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, s: c.s || 0, v: c.v || 0, ca: c.ca || 0, e: c.e, et: c.et }; }
 
 function boardPayload() {
   const players = Object.entries(store.players).map(([tok, p]) => ({
@@ -248,7 +248,7 @@ wss.on('connection', ws => {
 
     if (m.type === 'hello') {
       if (ACCESS_CODE && clean(m.code, 32) !== ACCESS_CODE) { send(ws, { type: 'denied', reason: 'code' }); return; }
-      c.n = clean(m.n, 16) || '매니저'; c.p = clean(m.p, 24); c.c = color(m.c);
+      c.n = clean(m.n, 16) || '매니저'; c.p = clean(m.p, 24); c.c = color(m.c); c.lv = Math.max(0, Math.min(5, m.lv | 0)); c.sk = Math.max(0, Math.min(c.lv, m.sk | 0));
       c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300);
       c.token = /^[a-z0-9]{8,64}$/i.test(m.token || '') ? m.token : crypto.randomBytes(12).toString('hex');
       // same person in another tab: keep only the newest
@@ -267,6 +267,7 @@ wss.on('connection', ws => {
     if (!c.joined) return;
 
     if (m.type === 'state') {
+      c.lv = Math.max(0, Math.min(5, m.lv | 0)); c.sk = Math.max(0, Math.min(c.lv, m.sk | 0));
       c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0; c.s = m.s ? 1 : 0; c.v = Math.max(0, Math.min(3, m.v | 0)); c.ca = Math.max(-1e4, Math.min(1e4, +m.ca || 0));
       if (typeof m.e === 'string') { c.e = clean(m.e, 4); c.et = num(m.et, 0, 9e15); }
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
@@ -283,7 +284,10 @@ wss.on('connection', ws => {
       broadcast({ type: 'chat', m: msg });
     } else if (m.type === 'stats') {
       const st = normStats(m.st); if (!st) return;
-      store.players[c.token] = { n: c.n, p: c.p, c: c.c, st, ts: Date.now() }; save(); boardSoon();
+      const TP = [0, 80, 200, 400, 700, 1000], tierOf = p => TP.reduce((l, t, i) => p >= t ? i : l, 0);
+      const prev = store.players[c.token], lvNew = tierOf(st.pts), lvOld = prev && prev.lv != null ? prev.lv : null;
+      store.players[c.token] = { n: c.n, p: c.p, c: c.c, st, lv: lvNew, ts: Date.now() }; save(); boardSoon();
+      if (lvOld != null && lvNew > lvOld) broadcast({ type: 'promo', n: c.n, p: c.p, lv: lvNew }, ws);
     } else if (m.type === 'wish') {
       const t = clean(m.t, 40); if (!t) return;
       store.wishes[c.token] = { t, n: c.n, p: c.p, c: c.c, d: kstDay(), ts: Date.now() }; save(); boardSoon();
