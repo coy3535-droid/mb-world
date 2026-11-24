@@ -38,6 +38,13 @@ const color = c => (/^#[0-9a-f]{6}$/i.test(c) ? c : '#c9ced6');
 const num = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(+v || 0)));
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 let WX = null;
+// ---------- daily visit log ----------
+function visitDay(day) { store.visits = store.visits || {}; const v = store.visits[day] || (store.visits[day] = {});
+  const keys = Object.keys(store.visits).sort(); while (keys.length > 14) delete store.visits[keys.shift()]; return v; }
+function visitStart(c) { const now = Date.now(), v = visitDay(kstDay()), r = v[c.token] || (v[c.token] = { n: c.n, p: c.p, first: now, last: now, cnt: 0, ms: 0 });
+  r.n = c.n; r.p = c.p; r.last = now; r.cnt++; c.joinAt = now; c.visitDay = kstDay(); save(); }
+function visitEnd(c) { if (!c.joinAt) return; const now = Date.now(), v = visitDay(c.visitDay || kstDay()), r = v[c.token]; if (r) { r.ms += now - c.joinAt; r.last = now; } c.joinAt = 0; save(); }
+function visitProfile(c) { const r = visitDay(c.visitDay || kstDay())[c.token]; if (r) { r.n = c.n; r.p = c.p; } }
 async function refreshWeather() {
   try {
     const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.978&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FSeoul&forecast_days=1', { signal: AbortSignal.timeout(8000) });
@@ -77,7 +84,25 @@ const EXPIRED = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><met
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0f12;color:#e9ebef;font-family:system-ui,'Noto Sans KR',sans-serif;text-align:center;padding:24px}b{color:#00adef}.c{max-width:360px}h1{letter-spacing:.2em;font-size:20px}p{color:#9aa0aa;line-height:1.7;font-size:14px}</style></head>
 <body><div class="c"><h1><b>MB</b> WORLD</h1><p>이 링크는 사용할 수 없어요.<br>MB World는 파일럿 기간 동안 <b>오늘 받은 초대 링크</b>로만 들어올 수 있어요.<br>담당자에게 오늘의 링크를 받아주세요.</p></div></body></html>`;
 let QR = null; try { QR = require('qrcode'); } catch (e) {}
+function fmtHM(ts) { return new Date(ts + 9 * 3600e3).toISOString().slice(11, 16); }
+function fmtDur(ms) { const m = Math.round(ms / 60000); return m < 1 ? '1분 미만' : m < 60 ? m + '분' : Math.floor(m / 60) + '시간 ' + (m % 60) + '분'; }
+function visitBox(logDay) {
+  const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const V = (store.visits || {})[logDay] || {}, now = Date.now(), live = new Map([...online.values()].filter(o => o.joined && o.joinAt).map(o => [o.token, o]));
+  const rows = Object.entries(V).map(([tk, r]) => { const o = live.get(tk); return { ...r, on: !!o, ms: r.ms + (o && logDay === kstDay() ? now - o.joinAt : 0) }; }).sort((a, b) => b.last - a.last);
+  const days = Object.keys(store.visits || {}).sort().reverse().slice(0, 7);
+  const tabs = days.map(d => `<a href="/admin?key=${encodeURIComponent(ADMIN_KEY)}&day=${d}#log" style="padding:6px 10px;border-radius:999px;border:1px solid #2a2d35;color:${d === logDay ? '#001018' : '#cfd3da'};background:${d === logDay ? '#00adef' : 'transparent'};text-decoration:none;font-size:12px">${d.slice(5).replace('-', '/')} · ${Object.keys(store.visits[d]).length}명</a>`).join('');
+  const total = rows.reduce((a, r) => a + r.cnt, 0);
+  const tr = rows.map(r => `<tr><td>${r.on ? '🟢 ' : ''}<b>${esc(r.n)}</b>${r.p ? `<br><span>${esc(r.p)}</span>` : ''}</td><td>${fmtHM(r.first)}</td><td>${r.on ? '접속 중' : fmtHM(r.last)}</td><td>${r.cnt}회</td><td>${fmtDur(r.ms)}</td></tr>`).join('');
+  return `<div class="box" id="log"><div class="l">📋 접속자 로그 · ${logDay}${logDay === kstDay() ? ' (오늘)' : ''}</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${tabs}</div>
+<div style="font-size:13px;margin-bottom:8px">방문 <b>${rows.length}명</b> · 접속 <b>${total}회</b> · 지금 접속 중 <b>${rows.filter(r => r.on).length}명</b></div>
+${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.5"><thead><tr style="color:#9aa0aa;text-align:left"><th style="padding:6px 4px">이름 · 소속</th><th>첫 접속</th><th>마지막</th><th>횟수</th><th>머문 시간</th></tr></thead><tbody>${tr}</tbody></table></div>` : '<div class="s">아직 기록이 없어요.</div>'}
+<a href="/admin/visits.csv?key=${encodeURIComponent(ADMIN_KEY)}&day=${logDay}" style="display:block;text-align:center;margin-top:10px;color:#00adef;font-size:13px">⬇️ CSV로 받기</a>
+<div class="s">시간은 한국 시간 기준이에요. 서버를 새로 배포하면 그 전 기록은 지워져요 (무료 서버 특성).</div></div>`;
+}
 async function adminPage(req) {
+  const logDay = (new URL(req.url, 'http://x').searchParams.get('day') || '').match(/^\d{4}-\d{2}-\d{2}$/) ? new URL(req.url, 'http://x').searchParams.get('day') : kstDay();
   const day = kstDay(), link = origin(req) + '/?k=' + todayToken(day), n = [...online.values()].filter(c => c.joined).length;
   const msg = `☕ MB World — 지점장님들의 쉼터\n\n머리가 복잡하거나 잠깐 숨 돌리고 싶을 때 들러보세요.\n낙하산 타고 내려와 천천히 걷고, 쉬고, 가볍게 인사 나누는 작은 공간이에요.\n\n🪂 비행기에서 낙하산으로 입장\n💎 매일 바뀌는 보물찾기 8곳\n🏁 지도 한 바퀴 MB 그랑프리 (3랩)\n🗼 등대·전망탑에 올라 풍경 보기\n🏊 강에서 수영 · 🧘 MB 홀에서 1분 쉬어가기\n☀️ 오늘 서울 날씨가 그대로 MB World에\n\n👉 오늘의 입장 링크 (오늘 밤 12시까지)\n${link}\n\n※ 앱 설치 없이 링크만 누르면 돼요`;
   const msgEn = `☕ MB World — A Little Break for Our Service Managers\n\nWhen your head feels full or you just need a breather, drop by.\nParachute in, take a slow walk, sit for a moment, and say hi to colleagues.\n\n🪂 Enter by parachute from a plane\n💎 Daily treasure hunt — 8 hidden chests\n🏁 MB Grand Prix — 3 laps around the whole map\n🗼 Climb the lighthouse & lookout towers\n🏊 Swim in the river · 🧘 Take a 1-minute rest in MB Hall\n☀️ Today's Seoul weather, live in MB World\n\n👉 Today's entry link (valid until midnight KST)\n${link}\n\n※ No app needed — just tap the link`;
@@ -101,6 +126,7 @@ ${qr ? `<div class="qr">${qr}</div>` : ''}
 <div class="s">이 링크를 받은 사람만 오늘 하루 들어올 수 있어요. 자정이 지나면 자동으로 막히고, 내일 링크가 새로 만들어져요.<br>현재 접속 중: <b>${n}명</b></div></div>
 <div class="box"><div class="l">카톡·팀즈 공유 문구</div><textarea id="msg" rows="12" readonly>${esc(msg)}</textarea><button type="button" class="g" data-copy="msg">공유 문구 복사</button></div>
 <div class="box"><div class="l">English share message</div><textarea id="msgEn" rows="12" readonly>${esc(msgEn)}</textarea><button type="button" class="g" data-copy="msgEn">Copy English message</button><button type="button" class="g" id="shareEn">📤 Share (English)</button></div>
+${visitBox(logDay)}
 <div class="box" id="news"><div class="l">📢 전광판 소식 (MB 광장, 최대 6개 · 최신이 먼저)</div>
 ${(store.news || []).map(n => `<div class="it"><div><b>${esc(n.t)}</b>${n.d ? `<br><span>${esc(n.d)}</span>` : ''}${n.u ? `<br><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.u)}</a>` : ''}</div><form method="post" action="/admin/news?key=${encodeURIComponent(ADMIN_KEY)}" onsubmit="return confirm('이 소식을 내릴까요?')"><input type="hidden" name="del" value="${esc(n.id)}"><button class="g x" type="submit">내리기</button></form></div>`).join('') || '<div class="s">아직 올린 소식이 없어요.</div>'}
 <form method="post" action="/admin/news?key=${encodeURIComponent(ADMIN_KEY)}" style="margin-top:12px"><input name="t" maxlength="40" placeholder="제목 (전광판에 크게 나와요)" required><input name="d" maxlength="80" placeholder="한 줄 설명 (선택)"><input name="u" maxlength="500" placeholder="링크 https://... (선택)" inputmode="url"><button type="submit">전광판에 올리기</button></form></div>
@@ -125,8 +151,14 @@ const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
   const u0 = new URL(req.url, 'http://x');
   if (u0.pathname === '/weather') { res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(WX || {})); return; }
-  if (u0.pathname === '/admin' || u0.pathname === '/admin/rotate' || u0.pathname === '/admin/news') {
+  if (u0.pathname === '/admin' || u0.pathname === '/admin/rotate' || u0.pathname === '/admin/news' || u0.pathname === '/admin/visits.csv') {
     if (!ADMIN_KEY || !LINK_SECRET || !safeEq(u0.searchParams.get('key') || '', ADMIN_KEY)) { res.writeHead(404); res.end('not found'); return; }
+    if (u0.pathname === '/admin/visits.csv') {
+      const d = (u0.searchParams.get('day') || '').match(/^\d{4}-\d{2}-\d{2}$/) ? u0.searchParams.get('day') : kstDay(), V = (store.visits || {})[d] || {};
+      const q = t => '"' + String(t).replace(/"/g, '""') + '"';
+      const lines = ['이름,소속,첫 접속,마지막,횟수,머문 시간(분)'].concat(Object.values(V).sort((a, b) => a.first - b.first).map(r => [q(r.n), q(r.p || ''), fmtHM(r.first), fmtHM(r.last), r.cnt, Math.round(r.ms / 60000)].join(',')));
+      res.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="mbworld-visits-${d}.csv"` }); res.end('﻿' + lines.join('\n')); return;
+    }
     if (u0.pathname === '/admin/rotate' && req.method === 'POST') {
       const d = kstDay(); store.linkSalt = store.linkSalt || {}; store.linkSalt[d] = (store.linkSalt[d] || 0) + 1; save();
       res.writeHead(303, { location: '/admin?key=' + encodeURIComponent(ADMIN_KEY) }); res.end(); return;
@@ -220,8 +252,8 @@ wss.on('connection', ws => {
       c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300);
       c.token = /^[a-z0-9]{8,64}$/i.test(m.token || '') ? m.token : crypto.randomBytes(12).toString('hex');
       // same person in another tab: keep only the newest
-      for (const [ows, oc] of online) if (ows !== ws && oc.token === c.token && oc.joined) { oc.joined = false; broadcast({ type: 'leave', id: oc.id }, ws); ows.close(4000, 'replaced'); }
-      c.joined = true;
+      for (const [ows, oc] of online) if (ows !== ws && oc.token === c.token && oc.joined) { visitEnd(oc); oc.joined = false; broadcast({ type: 'leave', id: oc.id }, ws); ows.close(4000, 'replaced'); }
+      c.joined = true; visitStart(c);
       const rec = store.players[c.token];
       if (rec) { rec.n = c.n; rec.p = c.p; rec.c = c.c; }
       send(ws, {
@@ -240,6 +272,7 @@ wss.on('connection', ws => {
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
     } else if (m.type === 'profile') {
       c.n = clean(m.n, 16) || c.n; c.p = clean(m.p, 24); c.c = color(m.c);
+      visitProfile(c);
       const rec = store.players[c.token]; if (rec) { rec.n = c.n; rec.p = c.p; rec.c = c.c; save(); boardSoon(); }
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
     } else if (m.type === 'chat') {
@@ -257,7 +290,7 @@ wss.on('connection', ws => {
     }
   });
 
-  ws.on('close', () => { online.delete(ws); if (c.joined) broadcast({ type: 'leave', id: c.id }); });
+  ws.on('close', () => { online.delete(ws); if (c.joined) { visitEnd(c); broadcast({ type: 'leave', id: c.id }); } });
 });
 
 setInterval(() => { for (const c of online.values()) c.bucket = Math.min(60, c.bucket + 40); }, 1000);
