@@ -284,7 +284,7 @@ wss.on('connection', ws => {
       broadcast({ type: 'chat', m: msg });
     } else if (m.type === 'stats') {
       const st = normStats(m.st); if (!st) return;
-      const TP = [0, 80, 200, 400, 700, 1000], tierOf = p => TP.reduce((l, t, i) => p >= t ? i : l, 0);
+      const TP = [0, 20, 45, 75, 110, 150], tierOf = p => TP.reduce((l, t, i) => p >= t ? i : l, 0);
       const prev = store.players[c.token], lvNew = tierOf(st.pts), lvOld = prev && prev.lv != null ? prev.lv : null;
       store.players[c.token] = { n: c.n, p: c.p, c: c.c, st, lv: lvNew, ts: Date.now() }; save(); boardSoon();
       if (lvOld != null && lvNew > lvOld) broadcast({ type: 'promo', n: c.n, p: c.p, lv: lvNew }, ws);

@@ -1684,11 +1684,11 @@ $('#trBtn').onclick=()=>{if(!joined)return;$('#act').classList.remove('hide');ac
 /* ---------- 서비스 커리어 · 스킨 ---------- */
 const TIERS=[
   {n:'루키 테크니션',ic:'🔧',p:0,col:'#9aa0aa',perk:'기본 정비복'},
-  {n:'서비스 어드바이저',ic:'📋',p:80,col:'#3ddc84',perk:'이름표 색상'},
-  {n:'마스터 테크니션',ic:'🛠️',p:200,col:'#00adef',perk:'세단 색상 선택'},
-  {n:'서비스 매니저',ic:'👔',p:400,col:'#9b6bff',perk:'낙하산 색상 선택'},
-  {n:'스타 리더',ic:'⭐',p:700,col:'#f2c230',perk:'걸을 때 반짝이 자국'},
-  {n:'레전드',ic:'👑',p:1000,col:'#ff8a3d',perk:'레이스카 골드 도색 · 별빛 후광'}];
+  {n:'서비스 어드바이저',ic:'📋',p:20,col:'#3ddc84',perk:'이름표 색상'},
+  {n:'마스터 테크니션',ic:'🛠️',p:45,col:'#00adef',perk:'세단 색상 선택'},
+  {n:'서비스 매니저',ic:'👔',p:75,col:'#9b6bff',perk:'낙하산 색상 선택'},
+  {n:'스타 리더',ic:'⭐',p:110,col:'#f2c230',perk:'걸을 때 반짝이 자국'},
+  {n:'레전드',ic:'👑',p:150,col:'#ff8a3d',perk:'레이스카 골드 도색 · 별빛 후광'}];
 const tierOf=p=>{let l=0;for(let i=0;i<TIERS.length;i++)if(p>=TIERS[i].p)l=i;return l;};
 const myLv=()=>stLoaded?tierOf(st.pts):0;
 let skinPick=null;try{const v=localStorage.getItem('mbworld.skin');if(v!==null)skinPick=+v;}catch(e){}
