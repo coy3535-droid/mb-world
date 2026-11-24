@@ -79,7 +79,7 @@ const EXPIRED = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><met
 let QR = null; try { QR = require('qrcode'); } catch (e) {}
 async function adminPage(req) {
   const day = kstDay(), link = origin(req) + '/?k=' + todayToken(day), n = [...online.values()].filter(c => c.joined).length;
-  const msg = `☕ MB World — 지점장님들의 쉼터\n\n머리가 복잡하거나 잠깐 숨 돌리고 싶을 때 들러보세요.\n천천히 걷고, 방석에 앉아 쉬고, 가볍게 인사 나누는 작은 공간이에요.\n\n🧘 MB 홀에서 1분 쉬어가기\n🔧 볼트 108번 조이며 머리 비우기\n🏎️ 레이스카로 트랙 3바퀴\n\n👉 오늘의 입장 링크 (오늘 밤 12시까지)\n${link}\n\n※ 앱 설치 없이 링크만 누르면 돼요`;
+  const msg = `☕ MB World — 지점장님들의 쉼터\n\n머리가 복잡하거나 잠깐 숨 돌리고 싶을 때 들러보세요.\n낙하산 타고 내려와 천천히 걷고, 쉬고, 가볍게 인사 나누는 작은 공간이에요.\n\n🪂 비행기에서 낙하산으로 입장\n💎 매일 바뀌는 보물찾기 8곳\n🏁 지도 한 바퀴 MB 그랑프리 (3랩)\n🗼 등대·전망탑에 올라 풍경 보기\n🏊 강에서 수영 · 🧘 MB 홀에서 1분 쉬어가기\n☀️ 오늘 서울 날씨가 그대로 MB World에\n\n👉 오늘의 입장 링크 (오늘 밤 12시까지)\n${link}\n\n※ 앱 설치 없이 링크만 누르면 돼요`;
   let qr = '';
   try { if (QR) qr = await QR.toString(link, { type: 'svg', margin: 1, width: 200, color: { dark: '#000000', light: '#ffffff' } }); } catch (e) {}
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
