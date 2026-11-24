@@ -80,6 +80,7 @@ let QR = null; try { QR = require('qrcode'); } catch (e) {}
 async function adminPage(req) {
   const day = kstDay(), link = origin(req) + '/?k=' + todayToken(day), n = [...online.values()].filter(c => c.joined).length;
   const msg = `☕ MB World — 지점장님들의 쉼터\n\n머리가 복잡하거나 잠깐 숨 돌리고 싶을 때 들러보세요.\n낙하산 타고 내려와 천천히 걷고, 쉬고, 가볍게 인사 나누는 작은 공간이에요.\n\n🪂 비행기에서 낙하산으로 입장\n💎 매일 바뀌는 보물찾기 8곳\n🏁 지도 한 바퀴 MB 그랑프리 (3랩)\n🗼 등대·전망탑에 올라 풍경 보기\n🏊 강에서 수영 · 🧘 MB 홀에서 1분 쉬어가기\n☀️ 오늘 서울 날씨가 그대로 MB World에\n\n👉 오늘의 입장 링크 (오늘 밤 12시까지)\n${link}\n\n※ 앱 설치 없이 링크만 누르면 돼요`;
+  const msgEn = `☕ MB World — A Little Break for Our Service Managers\n\nWhen your head feels full or you just need a breather, drop by.\nParachute in, take a slow walk, sit for a moment, and say hi to colleagues.\n\n🪂 Enter by parachute from a plane\n💎 Daily treasure hunt — 8 hidden chests\n🏁 MB Grand Prix — 3 laps around the whole map\n🗼 Climb the lighthouse & lookout towers\n🏊 Swim in the river · 🧘 Take a 1-minute rest in MB Hall\n☀️ Today's Seoul weather, live in MB World\n\n👉 Today's entry link (valid until midnight KST)\n${link}\n\n※ No app needed — just tap the link`;
   let qr = '';
   try { if (QR) qr = await QR.toString(link, { type: 'svg', margin: 1, width: 200, color: { dark: '#000000', light: '#ffffff' } }); } catch (e) {}
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -99,6 +100,7 @@ input{width:100%;box-sizing:border-box;background:#0f1115;border:1px solid #2a2d
 ${qr ? `<div class="qr">${qr}</div>` : ''}
 <div class="s">이 링크를 받은 사람만 오늘 하루 들어올 수 있어요. 자정이 지나면 자동으로 막히고, 내일 링크가 새로 만들어져요.<br>현재 접속 중: <b>${n}명</b></div></div>
 <div class="box"><div class="l">카톡·팀즈 공유 문구</div><textarea id="msg" rows="12" readonly>${esc(msg)}</textarea><button type="button" class="g" data-copy="msg">공유 문구 복사</button></div>
+<div class="box"><div class="l">English share message</div><textarea id="msgEn" rows="12" readonly>${esc(msgEn)}</textarea><button type="button" class="g" data-copy="msgEn">Copy English message</button><button type="button" class="g" id="shareEn">📤 Share (English)</button></div>
 <div class="box" id="news"><div class="l">📢 전광판 소식 (MB 광장, 최대 6개 · 최신이 먼저)</div>
 ${(store.news || []).map(n => `<div class="it"><div><b>${esc(n.t)}</b>${n.d ? `<br><span>${esc(n.d)}</span>` : ''}${n.u ? `<br><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.u)}</a>` : ''}</div><form method="post" action="/admin/news?key=${encodeURIComponent(ADMIN_KEY)}" onsubmit="return confirm('이 소식을 내릴까요?')"><input type="hidden" name="del" value="${esc(n.id)}"><button class="g x" type="submit">내리기</button></form></div>`).join('') || '<div class="s">아직 올린 소식이 없어요.</div>'}
 <form method="post" action="/admin/news?key=${encodeURIComponent(ADMIN_KEY)}" style="margin-top:12px"><input name="t" maxlength="40" placeholder="제목 (전광판에 크게 나와요)" required><input name="d" maxlength="80" placeholder="한 줄 설명 (선택)"><input name="u" maxlength="500" placeholder="링크 https://... (선택)" inputmode="url"><button type="submit">전광판에 올리기</button></form></div>
@@ -113,6 +115,8 @@ document.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener(
 var sh=document.getElementById('share');
 if(navigator.share){sh.addEventListener('click',function(){navigator.share({title:'MB World — 지점장님들의 쉼터',text:document.getElementById('msg').value}).catch(function(){});});}
 else{sh.textContent='📤 공유 문구 복사';sh.addEventListener('click',function(){copyFrom('msg')});}
+var se=document.getElementById('shareEn');
+if(navigator.share){se.addEventListener('click',function(){navigator.share({title:'MB World',text:document.getElementById('msgEn').value}).catch(function(){});});}else se.style.display='none';
 </script></body></html>`;
 }
 
