@@ -1157,9 +1157,9 @@ const DEF_ST=()=>({pts:0,bolts:0,set:0,best:0,race:0,gp:0,streak:0,last:'',days:
 let st=DEF_ST(),stLoaded=false,board={players:[],wishes:[],totalBolts:0};
 function normSt(s){const d=DEF_ST();if(!s||typeof s!=='object')return d;const n=(v,mx=1e9)=>Math.max(0,Math.min(mx,Math.floor(+v||0)));
   const o={pts:n(s.pts),bolts:n(s.bolts),set:n(s.set,107),best:n(s.best,36e5),race:n(s.race,36e5),gp:n(s.gp,36e5),streak:n(s.streak,9999),last:typeof s.last==='string'?s.last.slice(0,10):'',days:n(s.days,99999),day:{...d.day}};
-  if(s.day&&typeof s.day==='object')o.day={d:String(s.day.d||'').slice(0,10),polish:n(s.day.polish,99),coffee:n(s.day.coffee,99),laps:n(s.day.laps,999),quiz:n(s.day.quiz,1),wish:n(s.day.wish,1),zen:n(s.day.zen,1),tr:n(s.day.tr,1023),ring:n(s.day.ring,99)};
+  if(s.day&&typeof s.day==='object')o.day={d:String(s.day.d||'').slice(0,10),polish:n(s.day.polish,99),coffee:n(s.day.coffee,99),laps:n(s.day.laps,999),quiz:n(s.day.quiz,1),wish:n(s.day.wish,1),zen:n(s.day.zen,1),tr:n(s.day.tr,1023),ring:n(s.day.ring,99),bolt:n(s.day.bolt,999)};
   return o;}
-function dayRoll(){if(st.day.d!==today())st.day={d:today(),polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0,tr:0,ring:0};}
+function dayRoll(){if(st.day.d!==today())st.day={d:today(),polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0,tr:0,ring:0,bolt:0};}
 let saveT=0;
 function saveSt(){updateHudPts();try{localStorage.setItem('mbworld.st',JSON.stringify(st));}catch(e){}clearTimeout(saveT);saveT=setTimeout(flushSt,1200);}
 async function flushSt(){
@@ -1170,7 +1170,7 @@ function gain(p,why){st.pts+=p;toast(`+${p}P · ${why}`);saveSt();}
 function updateHudPts(){const L=myLv();$('#myPts').textContent=`${TIERS[L].ic} ${st.pts.toLocaleString()}P`+(st.streak?` · 🔥${st.streak}일`:'');if(stLoaded)checkPromo();if(meAv)applySkin(meAv,mySkin(),L);}
 let toastT=0;function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600);}
 function attendance(){if(!stLoaded||!joined)return;dayRoll();const t=today();if(st.last===t)return;
-  st.streak=st.last===yesterday()?st.streak+1:1;st.last=t;st.days++;gain(2,st.streak>1?`🔥 ${st.streak}일 연속 출석!`:'오늘 첫 출석');}
+  st.streak=st.last===yesterday()?st.streak+1:1;st.last=t;st.days++;const wk=st.streak>1&&st.streak%7===0;gain(5+(wk?20:0),wk?`🔥 ${st.streak}일 연속 출석! 보너스 +20`:st.streak>1?`🔥 ${st.streak}일 연속 출석!`:'오늘 첫 출석');}
 function statsReady(s){if(stLoaded)return;let local=null;try{const raw=localStorage.getItem('mbworld.st');if(raw)local=normSt(JSON.parse(raw));}catch(e){}
   const r=s?normSt(s):null;st=r&&(!local||r.pts>=local.pts)?r:(local||DEF_ST());stLoaded=true;updateHudPts();attendance();saveSt();}
 function boardChanged(){if(!$('#p-board').classList.contains('hide'))renderBoard();if(actOpen&&actOpen.refresh)actOpen.refresh();}
@@ -1218,7 +1218,7 @@ function openNews(){$('#act').classList.remove('hide');actOpen={id:'news'};const
     b.append(card);}
   closeBtn(b);}
 const SPOTS=[
-  {id:'bolt',x:300,y:1272,icon:'🔧',label:'볼트 108회 조이기'},
+  {id:'bolt',x:300,y:1272,icon:'🔧',label:'볼트 30회 조이기'},
   {id:'polish',x:440,y:392,icon:'✨',label:'차량 광택 내기'},
   {id:'quiz',x:1795,y:248,icon:'🎧',label:'오늘의 응대 수행'},
   {id:'lap',x:1200,y:1144,icon:'🏎️',label:'MB 그랑프리 (순환도로 3랩)'},
@@ -1264,24 +1264,24 @@ function openAct(id){
   if(id==='news'){openNews();return;}
   if(id==='drive'){actDrive();return;}
   if(!joined||!stLoaded){toast('잠시만요, 기록을 불러오는 중이에요');return;}dayRoll();
-  if(id==='coffee'){if(st.day.coffee<3){st.day.coffee++;gain(1,`☕ 커피 한 잔의 여유 (${st.day.coffee}/3)`);}else toast('오늘 커피 포인트는 다 받았어요 ☕ 그래도 한 잔 더!');emote('☕');tok(520,.3);return;}
+  if(id==='coffee'){if(st.day.coffee<3){st.day.coffee++;gain(2,`☕ 커피 한 잔의 여유 (${st.day.coffee}/3)`);}else toast('오늘 커피 포인트는 다 받았어요 ☕ 그래도 한 잔 더!');emote('☕');tok(520,.3);return;}
   $('#act').classList.remove('hide');actOpen={id};
   ({bolt:actBolt,polish:actPolish,quiz:actQuiz,lap:actLap,lap2:actLap,wish:actWish})[id]();}
 function actBolt(){
-  const b=actShell('🔧 볼트 108회 조이기','누를 때마다 휠 너트를 한 번 조여요.<br>108번을 채우면 <b>+10P</b>');
+  dayRoll();const b=actShell('🔧 볼트 30회 조이기',`누를 때마다 휠 너트를 한 번 조여요.<br>30번을 채우면 <b>+10P</b> (하루 5세트 · 오늘 ${Math.min(5,st.day.bolt|0)}/5)`);
   const btn=el('button','bigtap');btn.innerHTML=`<svg viewBox="0 0 200 200" width="210" height="210"><circle cx="100" cy="100" r="96" fill="#1a1a1a"/><circle cx="100" cy="100" r="92" fill="none" stroke="#2b2b2b" stroke-width="6" stroke-dasharray="6 6"/><g id="rim" style="transform-origin:100px 100px;transition:transform .12s"><circle cx="100" cy="100" r="62" fill="#c9ced6"/><circle cx="100" cy="100" r="54" fill="#9aa1ab"/>${[0,1,2,3,4].map(i=>{const a=i*72-90,x=100+Math.cos(a*Math.PI/180)*30,y=100+Math.sin(a*Math.PI/180)*30;return `<circle class="nut" cx="${x}" cy="${y}" r="9" fill="#5a6068" stroke="#e9ebef" stroke-width="2"/>`;}).join('')}<circle cx="100" cy="100" r="13" fill="#2b2f36"/></g></svg>`;
-  const cnt=el('div','cnt');const cv0=el('span');cnt.append(cv0,el('small',null,' / 108'));
+  const cnt=el('div','cnt');const cv0=el('span');cnt.append(cv0,el('small',null,' / 30'));if(st.set>=30)st.set=0;
   const bar=el('div','bar');const bi=el('i');bar.append(bi);
   const info=el('div','sub');
   b.append(btn,cnt,bar,info);closeBtn(b);
-  const paint=()=>{cv0.textContent=st.set;bi.style.width=(st.set/108*100)+'%';
+  const paint=()=>{cv0.textContent=st.set;bi.style.width=(st.set/30*100)+'%';
     btn.querySelector('#rim').style.transform=`rotate(${st.bolts*18}deg)`;btn.querySelectorAll('.nut').forEach((n,i)=>n.setAttribute('fill',i===st.bolts%5?'#ffd36b':'#5a6068'));
     info.textContent=`내가 조인 볼트 ${st.bolts.toLocaleString()}개 · 모두 함께 ${Math.max(board.totalBolts,st.bolts).toLocaleString()}개`;};
   const hit=e=>{e&&e.preventDefault();st.bolts++;st.set++;tok(st.set%9===0?980:820);buzz(10);
-    if(st.set>=108){st.set=0;gain(10,'108 토크 완료! 🔧');chime();emote('🔧');buzz([30,40,30]);}saveSt();paint();};
+    if(st.set>=30){st.set=0;dayRoll();st.day.bolt=(st.day.bolt|0)+1;if(st.day.bolt<=5)gain(10,`30 토크 완료! 🔧 (오늘 ${st.day.bolt}/5)`);else toast('토크 완료! 🔧 오늘 볼트 포인트는 다 받았어요');chime();emote('🔧');buzz([30,40,30]);}saveSt();paint();};
   btn.addEventListener('pointerdown',hit);actOpen.key=hit;actOpen.refresh=paint;paint();}
 function actPolish(){
-  const b=actShell('✨ 차량 광택 내기','손가락(마우스)으로 문질러 먼지를 닦아주세요.'+(st.day.polish<3?` 완료하면 <b>+5P</b> (오늘 ${st.day.polish}/3)`:' 오늘 포인트는 다 받았지만, 닦는 맛은 그대로!'));
+  const b=actShell('✨ 차량 광택 내기','손가락(마우스)으로 문질러 먼지를 닦아주세요.'+(st.day.polish<3?` 완료하면 <b>+8P</b> (오늘 ${st.day.polish}/3)`:' 오늘 포인트는 다 받았지만, 닦는 맛은 그대로!'));
   const c=el('canvas');c.id='polishCv';c.width=760;c.height=380;b.append(c);const bar=el('div','bar');const bi=el('i');bar.append(bi);b.append(bar);closeBtn(b);
   const g=c.getContext('2d'),dirt=document.createElement('canvas');dirt.width=760;dirt.height=380;const dg=dirt.getContext('2d');
   const base=document.createElement('canvas');base.width=760;base.height=380;const bg=base.getContext('2d');
@@ -1304,7 +1304,7 @@ function actPolish(){
   const up=()=>{down=false;lastP=null;check();};c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
   const check=()=>{if(done)return;const d=dg.getImageData(0,0,760,380).data;let left=0;for(let i=3;i<d.length;i+=64)if(d[i]>40)left++;const pct=1-left/(d.length/64);bi.style.width=Math.min(100,pct/.9*100)+'%';
     if(pct>.9){done=true;dg.clearRect(0,0,760,380);draw();for(let i=0;i<40;i++){g.fillStyle='rgba(255,255,255,.9)';const x=Math.random()*760,y=80+Math.random()*220,k=3+Math.random()*6;g.beginPath();g.moveTo(x,y-k*2);g.lineTo(x+k*.5,y);g.lineTo(x,y+k*2);g.lineTo(x-k*.5,y);g.closePath();g.fill();}
-      chime();emote('✨');if(st.day.polish<3){st.day.polish++;gain(5,'반짝반짝 광택 완료');}else{st.day.polish++;toast('반짝반짝! ✨');saveSt();}
+      chime();emote('✨');if(st.day.polish<3){st.day.polish++;gain(8,'반짝반짝 광택 완료');}else{st.day.polish++;toast('반짝반짝! ✨');saveSt();}
       const again=el('button','btn','한 대 더 닦기');again.onclick=()=>{actPolish();};b.insertBefore(again,b.lastChild);}};
   const iv=setInterval(()=>{if(down)check();},400);actOpen.cleanup=()=>clearInterval(iv);}
 function actQuiz(){
@@ -1317,12 +1317,12 @@ function actQuiz(){
   q[1].forEach((t,i)=>{const bt=el('button',null,t);box.append(bt);
     if(answered){if(i===q[2])bt.classList.add('ok');bt.disabled=true;}
     else bt.onclick=()=>{if(st.day.quiz)return;st.day.quiz=1;box.querySelectorAll('button').forEach((x,j)=>{x.disabled=true;if(j===q[2])x.classList.add('ok');});
-      if(i===q[2]){chime();emote('👏');gain(5,'오늘의 수행 정답!');}else{bt.classList.add('no');tok(300,.25);gain(1,'오늘의 수행 참여');}
+      if(i===q[2]){chime();emote('👏');gain(10,'오늘의 수행 정답!');}else{bt.classList.add('no');tok(300,.25);gain(3,'오늘의 수행 참여');}
       ex.textContent='💡 '+q[3]+'  · 내일 새 문제가 나와요.';};});
   if(answered)ex.textContent='✓ 오늘의 수행 완료 · 💡 '+q[3];
   closeBtn(b);}
 function actLap(){
-  const b=actShell('🏁 MB 그랑프리 (3랩)','레이스카를 타고 지도 전체를 도는 <b>순환도로</b>를 <b>3바퀴</b> 달려요.<br>탑승하면 남쪽 출발선으로 이동해요. 완주 <b>+5P</b> (하루 3번), 내 신기록 <b>+5P</b>');
+  const b=actShell('🏁 MB 그랑프리 (3랩)','레이스카를 타고 지도 전체를 도는 <b>순환도로</b>를 <b>3바퀴</b> 달려요.<br>탑승하면 남쪽 출발선으로 이동해요. 완주 <b>+10P</b> (하루 3번), 내 신기록 <b>+10P</b>');
   const mine=el('div','mine');for(const [v,l] of [[fmtT(st.gp),'내 최고 기록'],[String(st.day.laps),'오늘 완주'],[String(Math.max(0,3-st.day.laps)),'포인트 남은 판']]){const d=el('div');d.append(el('b',null,v),document.createTextNode(l));mine.append(d);}b.append(mine);
   const help=el('div','sub',MOBILE?'조이스틱 위 = 가속 · 아래 = 브레이크 · 좌우 = 핸들':'W/↑ 가속 · S/↓ 브레이크 · A·D/←→ 핸들 · E 내리기');help.style.marginTop='10px';b.append(help);
   const h=el('h4',null,'🏆 MB 그랑프리 TOP 5');h.style.cssText='text-align:left;margin:14px 0 4px;font-size:12px;color:var(--sub)';b.append(h);
@@ -1333,7 +1333,7 @@ function actWish(){
   const b=actShell('🪙 분수에 오늘의 다짐',st.day.wish?'오늘의 다짐을 이미 던졌어요. 내일 또 만나요!':'동전과 함께 오늘의 다짐을 남겨요. 모두에게 보여요. <b>+3P</b>');
   if(!st.day.wish){const inp=el('input');inp.maxLength=40;inp.placeholder='예: 오늘 출고 고객 모두에게 먼저 인사하기';inp.style.cssText='width:100%;background:#0f1115;border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--txt);font:inherit;font-size:16px;outline:none';
     const go=el('button','btn','🪙 동전 던지기');b.append(inp,go);
-    const send=()=>{const t=clean(inp.value,40);if(!t){inp.focus();return;}st.day.wish=1;sendWish(t);chime();emote('🪙');gain(3,'오늘의 다짐');actWish();};
+    const send=()=>{const t=clean(inp.value,40);if(!t){inp.focus();return;}st.day.wish=1;sendWish(t);chime();emote('🪙');gain(5,'오늘의 다짐');actWish();};
     go.onclick=send;inp.addEventListener('keydown',e=>{if(e.key==='Enter')send();});setTimeout(()=>{if(!MOBILE)inp.focus();},50);}
   const h=el('h4',null,'오늘 모두의 다짐');h.style.cssText='text-align:left;margin:16px 0 4px;font-size:12px;color:var(--sub)';b.append(h);
   const wall=el('div');wall.style.cssText='max-height:220px;overflow:auto;text-align:left';b.append(wall);fillWishes(wall);
@@ -1356,7 +1356,7 @@ function renderBoard(){
   if(!lt.length)b.append(el('div','sys','테스트 트랙에서 레이스카를 타고 첫 기록을 세워보세요'));lt.forEach((p,i)=>b.append(rankRow(i+1,p,fmtT(p.best))));
   b.append(el('h4',null,'🪙 오늘의 다짐'));const w=el('div');fillWishes(w);b.append(w);
   b.append(el('h4',null,'포인트 얻는 법'));const t=el('div','pt-table');
-  t.textContent='출석 +2 (연속 출석 🔥) · 볼트 108회 +10 · 광택 +5 (하루 3번)\n응대 수행 정답 +5 (하루 1문제) · 다짐 +3 · 3랩 레이스 완주 +5 (하루 3번) · 신기록 +5 · 커피 +1 (하루 3잔)\nMB 홀 방석에서 1분 집중 +3';t.style.whiteSpace='pre-line';b.append(t);}
+  t.textContent='출석 +5 (7일 연속마다 +20) · 볼트 30회 +10 (하루 5세트) · 광택 +8 (하루 3번)\n응대 퀴즈 정답 +10 / 참여 +3 · 다짐 +5 · 그랑프리 완주 +10 (하루 3번) · 신기록 +10\n보물 1개 +4 · 8개 모두 +20 · 순환도로 드라이브 한 바퀴 +5 (하루 2번) · MB 홀 1분 집중 +5 · 커피 +2 (하루 3잔)';t.style.whiteSpace='pre-line';b.append(t);}
 
 /* ---------- AMG-style V8 engine (synthesized) ---------- */
 const engine={on:false,n:null,
@@ -1401,7 +1401,7 @@ function raceExit(){if(!race.on)return;race.on=false;race.phase='idle';if(race.c
   if(race.mode!=='track'){const c=race.car;if(c)c.visible=false;race.car=race._track||null;race.mode='track';}engine.stop();bgmTarget=.32;['#raceHud','#raceBig','#raceHelp'].forEach(q=>$(q).style.display='none');closeAct();push(true);}
 $('#rExit').onclick=e=>{e.stopPropagation();raceExit();};
 function raceFinish(total){race.phase='done';race.total=total;engine.crackle();chime();
-  let msg='',p=0;if(stLoaded){dayRoll();st.day.laps++;const prev=st.gp,rec=!prev||total<prev;if(rec)st.gp=total;if(st.day.laps<=3)p+=5;if(rec&&prev)p+=5;
+  let msg='',p=0;if(stLoaded){dayRoll();st.day.laps++;const prev=st.gp,rec=!prev||total<prev;if(rec)st.gp=total;if(st.day.laps<=3)p+=10;if(rec&&prev)p+=10;
     msg=rec?(prev?'🏆 개인 신기록!':'🎉 첫 기록!'):'완주!';if(p)gain(p,msg+' '+fmtT(total));else{toast(msg+' '+fmtT(total));saveSt();}}
   const big=$('#raceBig');big.textContent='FINISH';big.style.display='block';setTimeout(()=>{if(race.phase==='done')big.style.display='none';},1600);
   setTimeout(()=>{if(!race.on)return;$('#act').classList.remove('hide');actOpen={id:'race'};
@@ -1523,7 +1523,7 @@ function driveTick(dt){const now=performance.now(),V=VEH[race.mode];
     else if(race.gDir&&gi===(race.gate+race.gDir)%4){race.gate=gi;race.gSeen++;
       if(gi===race.gStart&&race.gSeen>=5){const t=now-race.lapT0;race.lapsDone++;race.lapT0=now;race.gSeen=1;const rec=!ringBest||t<ringBest;if(rec){ringBest=t;try{localStorage.setItem('mbworld.ring',String(t));}catch(e){}}
         engine.crackle();chime();toast((rec?'🏆 순환도로 신기록! ':'🏁 한 바퀴 완주! ')+fmtT(t));
-        if(stLoaded&&race.lapsDone===1){dayRoll();st.day.ring=(st.day.ring||0)+1;if(st.day.ring<=2)gain(3,'순환도로 한 바퀴 🚗');else saveSt();}}}
+        if(stLoaded&&race.lapsDone===1){dayRoll();st.day.ring=(st.day.ring||0)+1;if(st.day.ring<=2)gain(5,'순환도로 한 바퀴 🚗');else saveSt();}}}
     else if(gi!==race.gate){race.gStart=gi;race.gate=gi;race.gSeen=1;race.gDir=0;race.lapT0=now;}}
   race.inGate=gi;
   // engine
@@ -1665,7 +1665,7 @@ function buildTreasures(){trDay=today();for(const t of TRS)scene.remove(t.m.g);T
 function trMask(){return stLoaded&&st.day&&st.day.d===today()?(st.day.tr|0):0;}
 function trFound(t){if(!stLoaded)return;dayRoll();st.day.tr=(st.day.tr|0)|(1<<t.i);const n=TRS.filter(q=>trMask()&(1<<q.i)).length;
   chime();tok(1320,.35);setTimeout(()=>tok(1760,.3),120);buzz(40);
-  if(n>=TRS.length){gain(2+10,`🏆 오늘의 보물 ${TRS.length}개 모두 찾음!`);emote('🏆');}else gain(2,`💎 보물 발견! (${n}/${TRS.length}) · ${t.hint.replace(/^\S+\s/,'')}`);}
+  if(n>=TRS.length){gain(4+20,`🏆 오늘의 보물 ${TRS.length}개 모두 찾음! +20 보너스`);emote('🏆');}else gain(4,`💎 보물 발견! (${n}/${TRS.length}) · ${t.hint.replace(/^\S+\s/,'')}`);}
 function treasureTick(dt,tt){if(!TRS.length)return;if(trDay!==today()&&Math.floor(tt)%30===0)buildTreasures();
   const mask=trMask();let near=null,nd=1e9;
   for(const t of TRS){const got=!!(mask&(1<<t.i));const m=m0=>m0;t.open+=((got?1:0)-t.open)*Math.min(1,dt*4);t.m.lid.rotation.x=-t.open*1.9;
@@ -1676,7 +1676,7 @@ function treasureTick(dt,tt){if(!TRS.length)return;if(trDay!==today()&&Math.floo
     if(near&&nd<900){const a=Math.atan2(near.x-me.x,-(near.y-me.y)),ar=['⬆️','↗️','➡️','↘️','⬇️','↙️','⬅️','↖️'][((Math.round(a/(Math.PI/4))%8)+8)%8];txt+=` · ${ar} ${Math.max(1,Math.round(nd/20))}m`;}
     else if(n>=TRS.length)txt+=' 완료!';if(b.textContent!==txt)b.textContent=txt;}}
 $('#trBtn').onclick=()=>{if(!joined)return;$('#act').classList.remove('hide');actOpen={id:'treasure'};const mask=trMask(),n=TRS.filter(q=>mask&(1<<q.i)).length;
-  const b=actShell('💎 오늘의 보물찾기',`MB World 곳곳에 보물상자 ${TRS.length}개가 숨어 있어요. (매일 자정에 위치가 바뀌어요)<br>금빛 기둥을 찾아 가까이 가면 열려요. 1개 <b>+2P</b>, 모두 찾으면 <b>+10P</b> 보너스!`);
+  const b=actShell('💎 오늘의 보물찾기',`MB World 곳곳에 보물상자 ${TRS.length}개가 숨어 있어요. (매일 자정에 위치가 바뀌어요)<br>금빛 기둥을 찾아 가까이 가면 열려요. 1개 <b>+4P</b>, 모두 찾으면 <b>+20P</b> 보너스!`);
   const prog=el('div','cnt',`${n} / ${TRS.length}`);b.append(prog);
   const list=el('div');list.style.cssText='display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px;text-align:left';
   for(const t of TRS){const got=!!(mask&(1<<t.i)),d=Math.round(Math.hypot(me.x-t.x,me.y-t.y)/20);const row=el('div',null,`${got?'✅':'❔'} ${t.hint}${got?'':` <span style="color:var(--sub);font-size:12px">· 약 ${d}m</span>`}`);row.innerHTML=row.textContent.replace(/· 약 (\d+)m/,'<span style="color:#9aa0aa;font-size:12px">· 약 $1m</span>');row.style.cssText='background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px;font-size:13px'+(got?';opacity:.6':'');list.append(row);}
@@ -1764,7 +1764,7 @@ function step(now){
       if(!hits(nx,me.y)){me.x=nx;mv=true;}if(!hits(me.x,ny)){me.y=ny;mv=true;}if(!mv&&target)target=null;
       me.h=Math.atan2(vx,vy);push(false);}else if(was)push(true);
     meAv.tx=me.x;meAv.ty=me.y;meAv.th=me.h;meAv.x=me.x;meAv.y=me.y;meAv.moving=me.moving;meAv.sit=me.sit;
-    if(me.sit&&stLoaded&&!st.day.zen&&now-sitT0>60000){dayRoll();if(!st.day.zen){st.day.zen=1;chime();emote('🧘');gain(3,'🧘 오늘의 집중 1분 완료');}}
+    if(me.sit&&stLoaded&&!st.day.zen&&now-sitT0>60000){dayRoll();if(!st.day.zen){st.day.zen=1;chime();emote('🧘');gain(5,'🧘 오늘의 집중 1분 완료');}}
     let ns=null;for(const s of SPOTS){if(Math.hypot(s.x-me.x,s.y-me.y)<75){ns=s;break;}}
     if(!ns){const mt=MATS.find(m=>Math.hypot(m.x-me.x,m.y-me.y)<30);if(mt){SIT.mat=mt;ns=SIT;}}
     if(ns===SIT&&nearSpot===SIT){const lb=sitLabel(now);if(lb!==SIT._lb){SIT._lb=lb;const ab=$('#actBtn');ab.firstChild&&(ab.firstChild.textContent=lb);}}
