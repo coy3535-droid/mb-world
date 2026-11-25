@@ -21,7 +21,7 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // ---------- persistence ----------
 const FILE = path.join(DATA_DIR, 'world.json');
-let store = { chat: [], players: {}, wishes: {}, linkSalt: {}, news: [] };
+let store = { chat: [], players: {}, wishes: {}, linkSalt: {}, news: [], go610: 1 };
 try { store = Object.assign(store, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) {}
 if (!store.newsEdited) { try { store.news = JSON.parse(fs.readFileSync(path.join(__dirname, 'news.json'), 'utf8')); } catch (e) { store.news = store.news || []; } }
 let saveTimer = null;
@@ -61,7 +61,7 @@ function normStats(s) {
   const d = s.day && typeof s.day === 'object' ? s.day : {};
   return {
     pts: num(s.pts, 0, 1e9), bolts: num(s.bolts, 0, 1e9), set: num(s.set, 0, 107), best: num(s.best, 0, 36e5), race: num(s.race, 0, 36e5), gp: num(s.gp, 0, 36e5),
-    streak: num(s.streak, 0, 9999), last: clean(s.last, 10), days: num(s.days, 0, 99999),
+    g610: num(s.g610, 0, 15), streak: num(s.streak, 0, 9999), last: clean(s.last, 10), days: num(s.days, 0, 99999),
     day: { d: clean(d.d, 10), polish: num(d.polish, 0, 99), coffee: num(d.coffee, 0, 99), laps: num(d.laps, 0, 999), quiz: num(d.quiz, 0, 1), wish: num(d.wish, 0, 1), zen: num(d.zen, 0, 1), tr: num(d.tr, 0, 1023), ring: num(d.ring, 0, 99), bolt: num(d.bolt, 0, 999) },
   };
 }
@@ -127,6 +127,10 @@ ${qr ? `<div class="qr">${qr}</div>` : ''}
 <div class="box"><div class="l">카톡·팀즈 공유 문구</div><textarea id="msg" rows="12" readonly>${esc(msg)}</textarea><button type="button" class="g" data-copy="msg">공유 문구 복사</button></div>
 <div class="box"><div class="l">English share message</div><textarea id="msgEn" rows="12" readonly>${esc(msgEn)}</textarea><button type="button" class="g" data-copy="msgEn">Copy English message</button><button type="button" class="g" id="shareEn">📤 Share (English)</button></div>
 ${visitBox(logDay)}
+<div class="box" id="go610"><div class="l">🏔️ Go 610 캠페인 (전광판 첫 화면 · 확인하면 +10P와 등반 장비)</div>
+<div class="s" style="margin-top:0">지금 단계: <b>${['꺼짐','CAMP 1','CAMP 2','CAMP 3','SUMMIT'][store.go610 | 0]}</b></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${['꺼짐','CAMP 1','CAMP 2','CAMP 3','SUMMIT'].map((t, i) => `<form method="post" action="/admin/go610?key=${encodeURIComponent(ADMIN_KEY)}" style="flex:1"><input type="hidden" name="stage" value="${i}"><button type="submit" class="${(store.go610 | 0) === i ? '' : 'g'}" style="margin:0;padding:9px 4px;font-size:12px">${t}</button></form>`).join('')}</div>
+<div class="s">단계를 올리면 접속 중인 사람에게 바로 반영돼요. 이미지가 아직 없는 단계는 글자로만 나와요.</div></div>
 <div class="box" id="news"><div class="l">📢 전광판 소식 (MB 광장, 최대 6개 · 최신이 먼저)</div>
 ${(store.news || []).map(n => `<div class="it"><div><b>${esc(n.t)}</b>${n.d ? `<br><span>${esc(n.d)}</span>` : ''}${n.u ? `<br><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.u)}</a>` : ''}</div><form method="post" action="/admin/news?key=${encodeURIComponent(ADMIN_KEY)}" onsubmit="return confirm('이 소식을 내릴까요?')"><input type="hidden" name="del" value="${esc(n.id)}"><button class="g x" type="submit">내리기</button></form></div>`).join('') || '<div class="s">아직 올린 소식이 없어요.</div>'}
 <form method="post" action="/admin/news?key=${encodeURIComponent(ADMIN_KEY)}" style="margin-top:12px"><input name="t" maxlength="40" placeholder="제목 (전광판에 크게 나와요)" required><input name="d" maxlength="80" placeholder="한 줄 설명 (선택)"><input name="u" maxlength="500" placeholder="링크 https://... (선택)" inputmode="url"><button type="submit">전광판에 올리기</button></form></div>
@@ -151,7 +155,7 @@ const server = http.createServer((req, res) => {
   if (req.url === '/healthz') { res.end('ok'); return; }
   const u0 = new URL(req.url, 'http://x');
   if (u0.pathname === '/weather') { res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(WX || {})); return; }
-  if (u0.pathname === '/admin' || u0.pathname === '/admin/rotate' || u0.pathname === '/admin/news' || u0.pathname === '/admin/visits.csv') {
+  if (u0.pathname === '/admin' || u0.pathname === '/admin/rotate' || u0.pathname === '/admin/news' || u0.pathname === '/admin/go610' || u0.pathname === '/admin/visits.csv') {
     if (!ADMIN_KEY || !LINK_SECRET || !safeEq(u0.searchParams.get('key') || '', ADMIN_KEY)) { res.writeHead(404); res.end('not found'); return; }
     if (u0.pathname === '/admin/visits.csv') {
       const d = (u0.searchParams.get('day') || '').match(/^\d{4}-\d{2}-\d{2}$/) ? u0.searchParams.get('day') : kstDay(), V = (store.visits || {})[d] || {};
@@ -162,6 +166,13 @@ const server = http.createServer((req, res) => {
     if (u0.pathname === '/admin/rotate' && req.method === 'POST') {
       const d = kstDay(); store.linkSalt = store.linkSalt || {}; store.linkSalt[d] = (store.linkSalt[d] || 0) + 1; save();
       res.writeHead(303, { location: '/admin?key=' + encodeURIComponent(ADMIN_KEY) }); res.end(); return;
+    }
+    if (u0.pathname === '/admin/go610' && req.method === 'POST') {
+      let body = ''; req.on('data', d => { body += d; if (body.length > 200) req.destroy(); });
+      req.on('end', () => {
+        store.go610 = num(new URLSearchParams(body).get('stage'), 0, 4); save(); broadcast({ type: 'go610', stage: store.go610 });
+        res.writeHead(303, { location: '/admin?key=' + encodeURIComponent(ADMIN_KEY) + '#go610' }); res.end();
+      }); return;
     }
     if (u0.pathname === '/admin/news' && req.method === 'POST') {
       let body = ''; req.on('data', d => { body += d; if (body.length > 8000) req.destroy(); });
@@ -179,7 +190,7 @@ const server = http.createServer((req, res) => {
     }
     adminPage(req).then(h => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); res.end(h); }); return;
   }
-  const STATIC = { '/bgm.mp3': 'audio/mpeg', '/hall.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json' };
+  const STATIC = { '/go610/camp1.jpg': 'image/jpeg', '/go610/camp2.jpg': 'image/jpeg', '/go610/camp3.jpg': 'image/jpeg', '/go610/summit.jpg': 'image/jpeg', '/bgm.mp3': 'audio/mpeg', '/hall.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json' };
   const urlPath = req.url.split('?')[0];
   if (STATIC[urlPath]) {
     const f = path.join(__dirname, urlPath.slice(1));
@@ -217,7 +228,7 @@ const online = new Map(); // ws -> client
 
 function send(ws, obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 function broadcast(obj, except) { const s = JSON.stringify(obj); for (const ws of online.keys()) if (ws !== except && ws.readyState === 1) ws.send(s); }
-function peerOf(c) { return { id: c.id, lv: c.lv || 0, sk: c.sk || 0, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, s: c.s || 0, v: c.v || 0, ca: c.ca || 0, e: c.e, et: c.et }; }
+function peerOf(c) { return { id: c.id, lv: c.lv || 0, sk: c.sk || 0, g: c.g || 0, n: c.n, p: c.p, c: c.c, x: c.x, y: c.y, h: c.h, m: c.m, s: c.s || 0, v: c.v || 0, ca: c.ca || 0, e: c.e, et: c.et }; }
 
 function boardPayload() {
   const players = Object.entries(store.players).map(([tok, p]) => ({
@@ -248,7 +259,7 @@ wss.on('connection', ws => {
 
     if (m.type === 'hello') {
       if (ACCESS_CODE && clean(m.code, 32) !== ACCESS_CODE) { send(ws, { type: 'denied', reason: 'code' }); return; }
-      c.n = clean(m.n, 16) || '매니저'; c.p = clean(m.p, 24); c.c = color(m.c); c.lv = Math.max(0, Math.min(5, m.lv | 0)); c.sk = Math.max(0, Math.min(c.lv, m.sk | 0));
+      c.n = clean(m.n, 16) || '매니저'; c.p = clean(m.p, 24); c.c = color(m.c); c.lv = Math.max(0, Math.min(5, m.lv | 0)); c.sk = Math.max(0, Math.min(c.lv, m.sk | 0)); c.g = Math.max(0, Math.min(4, m.g | 0));
       c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300);
       c.token = /^[a-z0-9]{8,64}$/i.test(m.token || '') ? m.token : crypto.randomBytes(12).toString('hex');
       // same person in another tab: keep only the newest
@@ -259,7 +270,7 @@ wss.on('connection', ws => {
       send(ws, {
         type: 'welcome', id: c.id,
         peers: [...online.values()].filter(o => o.joined && o !== c).map(peerOf),
-        history: store.chat.slice(-80), board: boardPayload(), news: store.news || [], wx: WX, mystats: rec ? rec.st : null,
+        history: store.chat.slice(-80), board: boardPayload(), news: store.news || [], go610: store.go610 | 0, wx: WX, mystats: rec ? rec.st : null,
       });
       broadcast({ type: 'peer', ...peerOf(c) }, ws);
       return;
@@ -267,7 +278,7 @@ wss.on('connection', ws => {
     if (!c.joined) return;
 
     if (m.type === 'state') {
-      c.lv = Math.max(0, Math.min(5, m.lv | 0)); c.sk = Math.max(0, Math.min(c.lv, m.sk | 0));
+      c.lv = Math.max(0, Math.min(5, m.lv | 0)); c.sk = Math.max(0, Math.min(c.lv, m.sk | 0)); c.g = Math.max(0, Math.min(4, m.g | 0));
       c.x = num(m.x, -2400, 4800); c.y = num(m.y, -1800, 3300); c.h = Math.max(-7, Math.min(7, +m.h || 0)); c.m = m.m ? 1 : 0; c.s = m.s ? 1 : 0; c.v = Math.max(0, Math.min(3, m.v | 0)); c.ca = Math.max(-1e4, Math.min(1e4, +m.ca || 0));
       if (typeof m.e === 'string') { c.e = clean(m.e, 4); c.et = num(m.et, 0, 9e15); }
       broadcast({ type: 'peer', ...peerOf(c) }, ws);

@@ -930,7 +930,7 @@ function spawn(){for(let i=0;i<300;i++){const x=1150+Math.random()*100,y=540+Mat
 const MODE=(window.claude&&typeof window.claude.use==='function')?'artifact':(/^https?:$/.test(location.protocol)?'ws':'none');
 let room=null,db=null,myKey='me-local',myId=null,ws=null,needCode=false,accessCode='',lastSent=0,welcomed=false;
 function setConn(on,label){const el=$('#conn');el.classList.toggle('on',!!on);el.querySelector('span').textContent=label||(on?'실시간 연결됨':'연결 중…');}
-function stateObj(){return {lv:myLv(),sk:mySkin(),n:me.n,p:me.p,c:me.c,x:Math.round(me.x),y:Math.round(me.y),h:Math.round(me.h*100)/100,m:me.moving?1:0,s:me.sit?1:0,v:race.on?({sedan:2,bike:3}[race.mode]||1):0,ca:Math.round(race.a*100)/100,e:me.e,et:me.et};}
+function stateObj(){return {g:gearN(),lv:myLv(),sk:mySkin(),n:me.n,p:me.p,c:me.c,x:Math.round(me.x),y:Math.round(me.y),h:Math.round(me.h*100)/100,m:me.moving?1:0,s:me.sit?1:0,v:race.on?({sedan:2,bike:3}[race.mode]||1):0,ca:Math.round(race.a*100)/100,e:me.e,et:me.et};}
 const drop={on:false,phase:'',t:0,alt:0,vx:0,vy:0,plane:null,chute:null,ui:null};
 function push(force){if(drop.on)return;
   if(!joined)return;const now=performance.now();if(!force&&now-lastSent<70)return;lastSent=now;
@@ -941,7 +941,7 @@ function upsertPeer(key,s){
   if(!s||typeof s.x!=='number'||!s.n||key===myKey)return;
   let a=AV.get(key);if(!a){a=makeAvatar(key,false);a.x=a.tx=clamp(s.x,WB.x0,WB.x1);a.y=a.ty=clamp(s.y,WB.y0,WB.y1);}
   a.tx=clamp(+s.x,WB.x0,WB.x1);a.ty=clamp(+s.y,WB.y0,WB.y1);a.th=+s.h||0;a.sit=!!s.s;a.veh=!!s.v;a.vt=+s.v||0;a.ca=+s.ca||0;
-  setLook(a,clean(s.n,16),clean(s.p,24),okColor(s.c));applySkin(a,Math.max(0,Math.min(5,s.sk|0)),Math.max(0,Math.min(5,s.lv|0)));
+  setLook(a,clean(s.n,16),clean(s.p,24),okColor(s.c));applySkin(a,Math.max(0,Math.min(5,s.sk|0)),Math.max(0,Math.min(5,s.lv|0)));applyGear(a,Math.max(0,Math.min(4,s.g|0)));
   if(s.e&&s.et&&s.et!==a.lastEt){if(a.lastEt!==undefined&&Date.now()-s.et<5000){showEmote(key,clean(s.e,4));if(s.e==='🙇')a.bowT=performance.now();}a.lastEt=s.et;}else if(a.lastEt===undefined)a.lastEt=s.et||0;
   peopleDirty=true;}
 let peopleDirty=true;
@@ -980,13 +980,14 @@ function initWS(){
     else if(m.type==='denied'){welcomed=false;if(joined){joined=false;openProfile('join');}$('#jerr').textContent=m.reason==='code'?'입장 코드가 맞지 않아요.':'입장할 수 없어요.';}
     else if(m.type==='welcome'){welcomed=true;const old=myKey;myKey=m.id;if(meAv){AV.delete(old);AV.set(myKey,meAv);meAv.key=myKey;if(!meAv.g.parent)scene.add(meAv.g);meAv.g.visible=!race.on;}
       for(const k of [...AV.keys()])if(k!==myKey)removeAvatar(k);
-      (m.peers||[]).forEach(p=>upsertPeer(p.id,p));(m.history||[]).forEach(x=>addMsg({...x,_id:x.id}));if(m.board)applyBoard(m.board);if(m.news)setNews(m.news);if(m.wx&&m.wx.code!=null)applyWeather(m.wx);statsReady(m.mystats||null);
+      (m.peers||[]).forEach(p=>upsertPeer(p.id,p));(m.history||[]).forEach(x=>addMsg({...x,_id:x.id}));if(m.board)applyBoard(m.board);if(m.news)setNews(m.news);setGo610(m.go610);if(m.wx&&m.wx.code!=null)applyWeather(m.wx);statsReady(m.mystats||null);
       setConn(true);$('#join').classList.add('hide');push(true);}
     else if(m.type==='peer') upsertPeer(m.id,m);
     else if(m.type==='leave'){if(m.id!==myKey)removeAvatar(m.id);peopleDirty=true;}
     else if(m.type==='chat'&&m.m) addMsg({...m.m,_id:m.m.id});
     else if(m.type==='board')applyBoard(m);
     else if(m.type==='news')setNews(m.items);
+    else if(m.type==='go610')setGo610(m.stage);
     else if(m.type==='weather')applyWeather(m.wx);
     else if(m.type==='promo')showPromo(m);
     else if(m.type==='notice') sys(clean(m.text,120));
@@ -996,7 +997,7 @@ function initWS(){
 function applyBoard(b){board.players=(b.players||[]).map(x=>({n:clean(x.n,16),p:clean(x.p,24),c:okColor(x.c),pts:+x.pts||0,bolts:+x.bolts||0,best:+x.best||0,streak:+x.streak||0,me:x.id===myKey}));
   board.wishes=(b.wishes||[]).map(x=>({t:clean(x.t,40),n:clean(x.n,16),p:clean(x.p,24),c:okColor(x.c),d:String(x.d||''),ts:+x.ts||0}));board.totalBolts=+b.totalBolts||0;boardChanged();}
 let token='';try{token=localStorage.getItem('mbworld.token')||'';if(!token){token=Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('mbworld.token',token);}}catch(e){token=token||Math.random().toString(36).slice(2)+Date.now().toString(36);}
-function sendHello(){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'hello',lv:myLv(),sk:mySkin(),n:me.n,p:me.p,c:me.c,code:accessCode,token,x:Math.round(me.x),y:Math.round(me.y)}));}
+function sendHello(){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'hello',g:gearN(),lv:myLv(),sk:mySkin(),n:me.n,p:me.p,c:me.c,code:accessCode,token,x:Math.round(me.x),y:Math.round(me.y)}));}
 
 /* ---------- chat ---------- */
 let msgs=[],filter='all',unread=0;const msgKeys=new Set();
@@ -1023,7 +1024,7 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.que
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x===b));for(const p of ['chat','people','board'])$('#p-'+p).classList.toggle('hide',b.dataset.p!==p);if(b.dataset.p==='board')renderBoard();});
 $('#sheetBtn').onclick=()=>{const s=$('#side');s.classList.toggle('open');if(s.classList.contains('open')){unread=0;$('#badge').style.display='none';renderLog();}};
 let sending=false;
-const PHRASES={"groups": [{"g": "☀️ 아침", "items": [0, 1, 2, 3]}, {"g": "🍚 점심", "items": [4, 5, 6, 7]}, {"g": "😊 미소", "items": [8, 9, 10, 11]}, {"g": "💪 응원", "items": [12, 13, 14, 15, 16, 17]}, {"g": "👋 인사", "items": [18, 19, 20, 21, 22]}], "list": ["좋은 아침이에요 ☀️", "오늘 하루도 활기차게 시작해요! 💪", "모닝 커피 한 잔 하셨어요? ☕", "상쾌한 아침, 좋은 일만 가득하세요 🌤️", "점심 맛있게 드세요 🍚", "식사는 하셨어요? 😊", "든든하게 드시고 오후도 힘내요! 🍱", "오늘 점심 메뉴는 뭐예요? 😋", "오늘도 미소 한 번 😊", "웃는 얼굴이 최고의 서비스예요 🙂", "고객도 우리도 함께 웃는 하루 되세요 😄", "미소가 예쁜 하루 보내세요 🌸", "오늘도 화이팅! 🔥", "수고 많으셨어요 👏", "덕분에 힘이 나요 💙", "함께라서 든든해요 🤝", "우리 센터 최고! 🏆", "힘든 하루였죠? 고생 많으셨어요 🌙", "안녕하세요 👋", "반가워요! 😀", "감사합니다 🙏", "좋은 하루 보내세요 🌿", "또 만나요 👋"]};
+const PHRASES={"groups": [{"g": "☀️ 아침", "items": [0, 1, 2, 3]}, {"g": "🍚 점심", "items": [4, 5, 6, 7]}, {"g": "😊 미소", "items": [8, 9, 10, 11]}, {"g": "💪 응원", "items": [12, 13, 14, 15, 16, 17]}, {"g": "👋 인사", "items": [18, 19, 20, 21, 22]}, {"g": "🏔️ Go 610", "items": [23, 24, 25, 26]}], "list": ["좋은 아침이에요 ☀️", "오늘 하루도 활기차게 시작해요! 💪", "모닝 커피 한 잔 하셨어요? ☕", "상쾌한 아침, 좋은 일만 가득하세요 🌤️", "점심 맛있게 드세요 🍚", "식사는 하셨어요? 😊", "든든하게 드시고 오후도 힘내요! 🍱", "오늘 점심 메뉴는 뭐예요? 😋", "오늘도 미소 한 번 😊", "웃는 얼굴이 최고의 서비스예요 🙂", "고객도 우리도 함께 웃는 하루 되세요 😄", "미소가 예쁜 하루 보내세요 🌸", "오늘도 화이팅! 🔥", "수고 많으셨어요 👏", "덕분에 힘이 나요 💙", "함께라서 든든해요 🤝", "우리 센터 최고! 🏆", "힘든 하루였죠? 고생 많으셨어요 🌙", "안녕하세요 👋", "반가워요! 😀", "감사합니다 🙏", "좋은 하루 보내세요 🌿", "또 만나요 👋", "Hold the rope! 🪢", "See you at the summit 🚩", "One more step! 🏔️", "One Team, Go 610 💪"]};
 $('#cf').addEventListener('submit',e=>e.preventDefault());
 function recGroup(){const h=new Date(Date.now()+9*3600e3).getUTCHours();if(h>=5&&h<11)return 0;if(h>=11&&h<14)return 1;if(h>=17)return 3;return 2;}
 function openPhrases(){if(!joined)return;const body=$('#phBody');body.textContent='';const rg=recGroup();
@@ -1153,10 +1154,10 @@ $('#copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText($('#invi
 /* ---------- activities ---------- */
 const kst=(o=0)=>new Date(Date.now()+9*3600e3+o).toISOString().slice(0,10);
 const today=()=>kst(0),yesterday=()=>kst(-864e5),dayNum=()=>Math.floor((Date.now()+9*3600e3)/864e5);
-const DEF_ST=()=>({pts:0,bolts:0,set:0,best:0,race:0,gp:0,streak:0,last:'',days:0,day:{d:'',polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0,tr:0,ring:0}});
+const DEF_ST=()=>({g610:0,pts:0,bolts:0,set:0,best:0,race:0,gp:0,streak:0,last:'',days:0,day:{d:'',polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0,tr:0,ring:0}});
 let st=DEF_ST(),stLoaded=false,board={players:[],wishes:[],totalBolts:0};
 function normSt(s){const d=DEF_ST();if(!s||typeof s!=='object')return d;const n=(v,mx=1e9)=>Math.max(0,Math.min(mx,Math.floor(+v||0)));
-  const o={pts:n(s.pts),bolts:n(s.bolts),set:n(s.set,107),best:n(s.best,36e5),race:n(s.race,36e5),gp:n(s.gp,36e5),streak:n(s.streak,9999),last:typeof s.last==='string'?s.last.slice(0,10):'',days:n(s.days,99999),day:{...d.day}};
+  const o={g610:n(s.g610,15),pts:n(s.pts),bolts:n(s.bolts),set:n(s.set,107),best:n(s.best,36e5),race:n(s.race,36e5),gp:n(s.gp,36e5),streak:n(s.streak,9999),last:typeof s.last==='string'?s.last.slice(0,10):'',days:n(s.days,99999),day:{...d.day}};
   if(s.day&&typeof s.day==='object')o.day={d:String(s.day.d||'').slice(0,10),polish:n(s.day.polish,99),coffee:n(s.day.coffee,99),laps:n(s.day.laps,999),quiz:n(s.day.quiz,1),wish:n(s.day.wish,1),zen:n(s.day.zen,1),tr:n(s.day.tr,1023),ring:n(s.day.ring,99),bolt:n(s.day.bolt,999)};
   return o;}
 function dayRoll(){if(st.day.d!==today())st.day={d:today(),polish:0,coffee:0,laps:0,quiz:0,wish:0,zen:0,tr:0,ring:0,bolt:0};}
@@ -1167,7 +1168,7 @@ async function flushSt(){
   if(db&&myId){try{await db.doc('scores/'+myId).set({n:me.n,p:me.p,c:me.c,pts:st.pts,bolts:st.bolts,best:st.gp,streak:st.streak,st,ts:Date.now()});}catch(e){}return;}
   board.players=[{n:me.n,p:me.p,c:me.c,pts:st.pts,bolts:st.bolts,best:st.gp,streak:st.streak,me:true}];board.totalBolts=st.bolts;boardChanged();}
 function gain(p,why){st.pts+=p;toast(`+${p}P · ${why}`);saveSt();}
-function updateHudPts(){const L=myLv();$('#myPts').textContent=`${TIERS[L].ic} ${st.pts.toLocaleString()}P`+(st.streak?` · 🔥${st.streak}일`:'');if(stLoaded)checkPromo();if(meAv)applySkin(meAv,mySkin(),L);}
+function updateHudPts(){const L=myLv();$('#myPts').textContent=`${TIERS[L].ic} ${st.pts.toLocaleString()}P`+(st.streak?` · 🔥${st.streak}일`:'');if(stLoaded)checkPromo();if(meAv){applySkin(meAv,mySkin(),L);applyGear(meAv,gearN());}}
 let toastT=0;function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600);}
 function attendance(){if(!stLoaded||!joined)return;dayRoll();const t=today();if(st.last===t)return;
   st.streak=st.last===yesterday()?st.streak+1:1;st.last=t;st.days++;const wk=st.streak>1&&st.streak%7===0;gain(5+(wk?20:0),wk?`🔥 ${st.streak}일 연속 출석! 보너스 +20`:st.streak>1?`🔥 ${st.streak}일 연속 출석!`:'오늘 첫 출석');}
@@ -1199,8 +1200,8 @@ function buildBillboard(){const{x,y,w}=BB,h=Math.round(w*.42);
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(U(w),U(h)),new THREE.MeshBasicMaterial({map:bbTex,toneMapped:false}));scr.position.set(U(x),4.2+U(h)/2,U(y)+.26);scene.add(scr);
   const back=new THREE.Mesh(new THREE.PlaneGeometry(U(w),U(h)),M('#2a2d34'));back.rotation.y=Math.PI;back.position.set(U(x),4.2+U(h)/2,U(y)-.26);scene.add(back);
   const gl=new THREE.PointLight('#5fd0ff',.8,14,2);gl.position.set(U(x),5.5,U(y)+3);scene.add(gl);drawBillboard(0);}
-function drawBillboard(dt){if(!bbG)return;bbT+=dt;const list=NEWS.length?NEWS:NEWS_DEFAULT;if(bbT>9){bbT=0;bbI=(bbI+1)%list.length;}const n=list[bbI%list.length];
-  const g=bbG,W2=bbCv.width,H2=bbCv.height;g.fillStyle='#05070a';g.fillRect(0,0,W2,H2);
+function drawBillboard(dt){if(!bbG)return;bbT+=dt;const list=bbList();if(bbT>(list[bbI%list.length].go?12:9)){bbT=0;bbI=(bbI+1)%list.length;}const n=list[bbI%list.length];
+  const g=bbG,W2=bbCv.width,H2=bbCv.height;if(n.go){drawGoSlide(g,W2,H2,bbI%list.length,list.length);return;}g.fillStyle='#05070a';g.fillRect(0,0,W2,H2);
   g.fillStyle='#00adef';g.fillRect(0,0,W2,78);g.fillStyle='#001018';g.font='900 46px "Noto Sans KR", sans-serif';g.textBaseline='middle';g.fillText('📢  MB NEWS',28,41);
   g.textAlign='right';g.font='700 32px "Noto Sans KR", sans-serif';g.fillText((bbI%list.length+1)+' / '+list.length,W2-28,41);g.textAlign='left';
   g.save();g.beginPath();g.rect(0,90,W2,H2-160);g.clip();g.fillStyle='#ffd36b';g.font='900 84px "Noto Sans KR", sans-serif';const tw=g.measureText(n.t).width;
@@ -1210,13 +1211,53 @@ function drawBillboard(dt){if(!bbG)return;bbT+=dt;const list=NEWS.length?NEWS:NE
   g.globalAlpha=.16;g.fillStyle='#000';for(let yy=0;yy<H2;yy+=4)g.fillRect(0,yy,W2,1.5);g.globalAlpha=1;bbTex.needsUpdate=true;}
 function openNews(){$('#act').classList.remove('hide');actOpen={id:'news'};const list=NEWS.length?NEWS:NEWS_DEFAULT;
   try{localStorage.setItem('mbworld.news',NEWS.map(n=>n.id).join(','));}catch(e){}
-  const b=actShell('📢 MB 전광판','지점장님들께 전하는 소식과 재밌는 정보예요.');
+  const b=actShell('📢 MB 전광판','지점장님들께 전하는 소식과 재밌는 정보예요.');goCard(b);
   for(const n of list){const card=el('div');card.style.cssText='background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px;margin-top:10px;text-align:left';
     const t=el('div',null,n.t);t.style.cssText='font-weight:800;font-size:15px;color:#ffd36b';card.append(t);
     if(n.d){const d=el('div',null,n.d);d.style.cssText='font-size:13px;color:var(--sub,#9aa0aa);margin-top:4px;line-height:1.6';card.append(d);}
     if(n.u){const a=el('a','btn',"열기 ↗");a.href=n.u;a.target='_blank';a.rel='noopener noreferrer';a.style.cssText='display:block;margin-top:10px;text-decoration:none;text-align:center';card.append(a);}
     b.append(card);}
   closeBtn(b);}
+
+/* ---------- Go 610 캠페인 (캠프 1·2·3 → 정상) ---------- */
+const G610=[{k:'camp1',t:'CAMP 1',s:'The climb begins',gear:'🔦 헤드랜턴'},{k:'camp2',t:'CAMP 2',s:'Hold the rope',gear:'🪢 등반 로프'},{k:'camp3',t:'CAMP 3',s:'The last ridge',gear:'⛏️ 아이스액스'},{k:'summit',t:'SUMMIT',s:'We made it together',gear:'🚩 Summit 610 깃발'}];
+let goStage=0;const goImg={};
+function setGo610(v){const n=Math.max(0,Math.min(4,v|0));const up=n>goStage&&joined;goStage=n;bbI=0;bbT=0;
+  for(let i=0;i<n;i++){const k=G610[i].k;if(!goImg[k]){const im=new Image();im.onload=()=>{im.ok=true;};im.src='/go610/'+k+'.jpg';goImg[k]=im;}}
+  if(up&&!(st.g610&(1<<(n-1))))toast(`🏔️ Go 610 · ${G610[n-1].t} 도착! 전광판에서 확인하고 +10P 받아요`);
+  if(actOpen&&actOpen.id==='news')openNews();}
+const gearN=()=>{let c=0,b=st.g610|0;while(b){c+=b&1;b>>=1;}return Math.min(4,c);};
+function bbList(){const base=NEWS.length?NEWS:NEWS_DEFAULT;return goStage>0?[{go:goStage},...base]:base;}
+function drawGoSlide(g,W2,H2,idx,len){const c=G610[goStage-1],im=goImg[c.k];g.fillStyle='#0a1622';g.fillRect(0,0,W2,H2);
+  if(im&&im.ok){const r=Math.min(W2/im.width,H2/im.height),iw=im.width*r,ih=im.height*r;g.drawImage(im,(W2-iw)/2,(H2-ih)/2,iw,ih);}
+  else{g.fillStyle='#ffffff';g.textBaseline='middle';g.font='900 110px "Noto Sans KR", sans-serif';g.fillText('🏔️ '+c.t,40,H2/2-40);g.font='700 52px "Noto Sans KR", sans-serif';g.fillStyle='#ffd36b';g.fillText(c.s,44,H2/2+50);}
+  const gr=g.createLinearGradient(0,H2-110,0,H2);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.85)');g.fillStyle=gr;g.fillRect(0,H2-110,W2,110);
+  const done=st.g610&(1<<(goStage-1));g.textBaseline='middle';g.textAlign='left';g.fillStyle=done?'#9aa0aa':'#3ddc84';g.font='800 34px "Noto Sans KR", sans-serif';
+  g.fillText(done?'✓ 확인 완료 · '+c.gear+' 장착 중':'▶ 앞의 📢 표시에서 확인하고 +10P · '+c.gear+' 받기',30,H2-38);
+  g.textAlign='right';g.fillStyle='#e9ebef';g.font='700 28px "Noto Sans KR", sans-serif';g.fillText((idx+1)+' / '+len,W2-24,40);g.textAlign='left';
+  g.globalAlpha=.12;g.fillStyle='#000';for(let yy=0;yy<H2;yy+=4)g.fillRect(0,yy,W2,1.5);g.globalAlpha=1;bbTex.needsUpdate=true;}
+function goCard(b){if(!goStage)return;const c=G610[goStage-1],card=el('div');
+  card.style.cssText='background:linear-gradient(160deg,rgba(0,173,239,.16),rgba(255,140,40,.10));border:1px solid rgba(0,173,239,.45);border-radius:14px;padding:12px;margin-top:10px;text-align:left';
+  const hd=el('div',null,`🏔️ Go 610 · ${c.t}`);hd.style.cssText='font-weight:900;font-size:16px;color:#ffd36b';card.append(hd);
+  const sb=el('div',null,'CS MKT · One Team, Go 610 — 캠프 1·2·3을 지나 정상까지 함께 올라요.');sb.style.cssText='font-size:12.5px;color:#cfd3da;margin-top:3px;line-height:1.5';card.append(sb);
+  const im=goImg[c.k];if(im&&im.ok){const i2=document.createElement('img');i2.src=im.src;i2.alt=c.t;i2.style.cssText='display:block;width:100%;border-radius:10px;margin-top:10px';card.append(i2);}
+  const row=el('div');row.style.cssText='display:flex;gap:6px;margin-top:10px';
+  G610.forEach((x,i)=>{const open=i<goStage,got=st.g610&(1<<i),d=el('div');d.style.cssText=`flex:1;text-align:center;border-radius:10px;padding:7px 2px;font-size:11px;line-height:1.4;background:rgba(255,255,255,${got?.14:.05});border:1px solid ${got?'#3ddc84':'transparent'};opacity:${open?1:.45}`;
+    d.innerHTML=`<div style="font-size:18px">${got?x.gear.split(' ')[0]:open?'🎁':'🔒'}</div><div style="font-weight:800">${x.t}</div>`;row.append(d);});card.append(row);
+  const todo=G610.map((x,i)=>i).filter(i=>i<goStage&&!(st.g610&(1<<i)));
+  if(todo.length){const bt=el('button','btn',`확인했어요 🚩 +${10*todo.length}P · 장비 받기`);bt.style.marginTop='10px';
+    bt.onclick=()=>{if(!stLoaded)return;for(const i of todo)st.g610|=1<<i;chime();buzz(40);gain(10*todo.length,`Go 610 · ${G610[todo[todo.length-1]].t} 확인`);
+      const L=myLv();applyGear(meAv,gearN());push(true);if(gearN()>=4)toast('🚩 정상 도착! Summit 610 깃발을 달았어요');else toast(`${G610[todo[todo.length-1]].gear} 장착!`);openNews();};card.append(bt);}
+  else{const ok=el('div',null,`✓ 확인 완료 · 지금 장비: ${G610.filter((x,i)=>st.g610&(1<<i)).map(x=>x.gear).join(' · ')}`);ok.style.cssText='font-size:12px;color:#3ddc84;margin-top:10px';card.append(ok);}
+  b.append(card);}
+function applyGear(a,n){if(!a||a.gear===n)return;a.gear=n;if(a.gearParts)for(const o of a.gearParts)o.parent&&o.parent.remove(o);a.gearParts=[];if(!n)return;
+  const add3=(par,geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=true;par.add(m);a.gearParts.push(m);return m;};
+  const band=M('#1f2329',{flatShading:false});
+  add3(a.headG,new THREE.TorusGeometry(.585,.045,8,36),band,0,.1,0,Math.PI/2.15,0,0);
+  const lamp=add3(a.headG,new THREE.CylinderGeometry(.11,.13,.12,16),new THREE.MeshBasicMaterial({color:'#fff6c8',toneMapped:false}),0,.16,.57,Math.PI/2,0,0);lamp.castShadow=false;
+  if(n>=2)add3(a.up,new THREE.TorusGeometry(.2,.06,8,20),M('#e8702a',{flatShading:false}),0,.38,-.42,0,0,0);
+  if(n>=3){const w=new THREE.Group();w.position.set(0,-.4,.05);a.arms[0].add(w);a.gearParts.push(w);add3(w,new THREE.CylinderGeometry(.025,.025,.5,8),M('#3b3f46'),0,-.1,.1,Math.PI/2.3,0,0);add3(w,new THREE.BoxGeometry(.3,.05,.06),M('#d4d8de',{metalness:.8,roughness:.3}),0,-.2,.32);}
+  if(n>=4){add3(a.up,new THREE.CylinderGeometry(.02,.02,1.5,8),M('#d4d8de'),.18,1.05,-.4);const fl=add3(a.up,new THREE.BoxGeometry(.02,.32,.5),new THREE.MeshBasicMaterial({color:'#ff7a1a',toneMapped:false}),.18,1.62,-.65);fl.castShadow=false;}}
 const SPOTS=[
   {id:'bolt',x:300,y:1272,icon:'🔧',label:'볼트 30회 조이기'},
   {id:'polish',x:440,y:392,icon:'✨',label:'차량 광택 내기'},
@@ -1872,7 +1913,7 @@ Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(bui
 requestAnimationFrame(step);
 if(MODE==='artifact')initArtifact();else if(MODE==='ws')initWS();else{setConn(false,'혼자 둘러보는 중');statsReady(null);}
 renderLog();
-if(/[?&]debug\b/.test(location.search))window.__mb={gain,applySkin,me,get meAv(){return meAv},openAct,race,driveEnter,get TRS(){return TRS},get st(){return st},raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
+if(/[?&]debug\b/.test(location.search))window.__mb={openNews,gearN,bbList,get goStage(){return goStage},get goImg(){return goImg},get bbCv(){return bbCv},gain,applySkin,me,get meAv(){return meAv},openAct,race,driveEnter,get TRS(){return TRS},get st(){return st},raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
 })();
 </script>
 </body>
