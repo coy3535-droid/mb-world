@@ -1534,7 +1534,7 @@ function raceTick(dt){const now=performance.now();
 
 /* ---------- loop ---------- */
 const mini=$('#mini'),mctx=mini.getContext('2d');
-let camFloor=0,topZ=1,bbAcc=0;let last=performance.now(),tt=0,peopleT=0;const camPos=new THREE.Vector3(U(1200),20,U(1200)),look=new THREE.Vector3(),camLook=new THREE.Vector3(U(1200),0,U(700)),pv=new THREE.Vector3();
+let bbFov=40,camFloor=0,topZ=1,bbAcc=0;let last=performance.now(),tt=0,peopleT=0;const camPos=new THREE.Vector3(U(1200),20,U(1200)),look=new THREE.Vector3(),camLook=new THREE.Vector3(U(1200),0,U(700)),pv=new THREE.Vector3();
 const fray=new THREE.Raycaster(),fv=new THREE.Vector3();let fadeFrame=0,fadeHits=new Set();
 function fadeTick(fx,fz,dt){
   if(++fadeFrame%2===0){fadeHits=new Set();if(camMode==='third'&&meAv){for(const hy of [.4,1.2,2.1])for(const dx of [-.35,0,.35]){fv.set(fx+dx,hy+(meAv.sit?-.3:0),fz).sub(camera.position);const d=fv.length();fray.set(camera.position,fv.normalize());fray.far=Math.max(.1,d-.7);for(const h of fray.intersectObjects(FADE,false))fadeHits.add(h.object);}}}
@@ -1895,17 +1895,19 @@ function step(now){
     look.set(fx+ca*4,.9,fz+sa*4);camLook.lerp(look,1-Math.exp(-dt*9));camera.lookAt(camLook);
     const fov=(MOBILE?52:46)+sp*16;if(Math.abs(camera.fov-fov)>.1){camera.fov+=(fov-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
   else{
-  {const fov0=MOBILE?48:40;if(Math.abs(camera.fov-fov0)>.1){camera.fov+=(fov0-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
+  {const fb=MOBILE?48:40,fov0=fb+(Math.max(fb,bbFov)-fb)*bbFrame;if(Math.abs(camera.fov-fov0)>.1){camera.fov+=(fov0-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();}}
   camFloor+=(Math.max(0,meAv?meAv.g.position.y:0)-camFloor)*Math.min(1,dt*5);
   topZ+=((meAv&&meAv.onTop?1.55:1)-topZ)*Math.min(1,dt*3);const zF=zoomF*topZ;
   const want=camMode==='third'?new THREE.Vector3(fx,5.2*zF+.8+camFloor,fz+10.8*zF):new THREE.Vector3(fx,16*zF+camFloor,fz+15*zF);
   if(camMode==='third')look.set(fx,1.9+camFloor,fz-3.2);else look.set(fx,.8+camFloor,fz);
-  {let tg=0;if(camMode==='third'&&BB.h&&joined){const dx=Math.abs(me.x-BB.x),dy=me.y-BB.y,zz=zoneAt(me.x,me.y);
-     if(!(zz&&!zz.open)&&dx<BB.w*.85&&dy>-20&&dy<620)tg=Math.min(1,(BB.w*.85-dx)/80)*Math.min(1,(620-dy)/120);}
-   bbFrame+=(tg-bbFrame)*Math.min(1,dt*2.5);if(bbFrame>.01){const cyc=BB.y0+U(BB.h)/2,cx=U(BB.x),Ws=U(BB.w)+.6,Hs=U(BB.h)+.6;
-     const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
-     let D=Math.max((Hs/2)*1.18/Math.tan(vf),(Ws/2)*1.08/Math.tan(hf))*Math.max(.6,zoomF);D=Math.min(D,U(70-BB.y)-1.2);
-     want.lerp(new THREE.Vector3(cx+(fx-cx)*.12,cyc+.4,U(BB.y)+D),bbFrame);look.lerp(new THREE.Vector3(cx,cyc+Hs*.05,U(BB.y)),bbFrame);}}
+  {let tg=0;if(BB.h&&joined&&!race.on){const dx=Math.abs(me.x-BB.x),dy=me.y-BB.y,zz=zoneAt(me.x,me.y);
+     if(!(zz&&!zz.open)&&dx<BB.w*.85&&dy>-20&&dy<620)tg=Math.min(1,(BB.w*.85-dx)/100)*Math.min(1,(dy+20)/40)*Math.min(1,(620-dy)/140);}
+   bbFrame+=(tg-bbFrame)*Math.min(1,dt*2.2);
+   if(bbFrame>.01){const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect),Ws=U(BB.w)+1.4,Hs=U(BB.h)+1.4;
+     const Dmax=(40-BB.y)/20;let D=Math.max((Hs*.5)/Math.tan(vf)/.8,(Ws*.5)/Math.tan(hf)/.94);
+     {const fb=MOBILE?48:40,needH=Math.atan((Ws*.5/.94)/Dmax),needV=2*Math.atan(Math.tan(needH)/camera.aspect)*180/Math.PI;bbFov=Math.min(78,Math.max(fb,needV));}D=Math.min(D,Dmax);
+     const cy=BB.y0+U(BB.h)/2,cx=U(BB.x),k=bbFrame*bbFrame*(3-2*bbFrame);
+     want.lerp(new THREE.Vector3(cx*.85+fx*.15,cy+.2,U(BB.y)+D),k);look.lerp(new THREE.Vector3(cx,cy+.15,U(BB.y)),k);}}
   camPos.lerp(want,1-Math.exp(-dt*5));camera.position.copy(camPos);
 camLook.lerp(look,1-Math.exp(-dt*7));camera.lookAt(camLook);
   }
@@ -1956,7 +1958,7 @@ Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(bui
 requestAnimationFrame(step);
 if(MODE==='artifact')initArtifact();else if(MODE==='ws')initWS();else{setConn(false,'혼자 둘러보는 중');statsReady(null);}
 renderLog();
-if(/[?&]debug\b/.test(location.search))window.__mb={openNews,gearN,bbList,get goStage(){return goStage},get goImg(){return goImg},get bbCv(){return bbCv},gain,applySkin,me,get meAv(){return meAv},openAct,race,driveEnter,get TRS(){return TRS},get st(){return st},raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
+if(/[?&]debug\b/.test(location.search))window.__mb={get cam(){return camera},get bbF(){return bbFrame},openNews,gearN,bbList,get goStage(){return goStage},get goImg(){return goImg},get bbCv(){return bbCv},gain,applySkin,me,get meAv(){return meAv},openAct,race,driveEnter,get TRS(){return TRS},get st(){return st},raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
 })();
 </script>
 </body>
