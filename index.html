@@ -76,7 +76,7 @@ button.chip:hover{border-color:rgba(255,255,255,.25)}
 #cf #sheetBtn{display:none}
 .modal{position:fixed;inset:0;background:rgba(5,6,8,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:grid;place-items:center;z-index:10;padding:16px}
 .modal.hide{display:none}
-.card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px}
+.card{max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch;width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px}
 .card .logo{font-weight:900;letter-spacing:.22em;font-size:20px}.card .logo b{color:var(--acc)}
 .card h2{font-size:17px}
 .card p{color:var(--sub);font-size:13px;margin:8px 0 14px;line-height:1.6}
@@ -138,6 +138,25 @@ button.chip:hover{border-color:rgba(255,255,255,.25)}
   #actBtn{bottom:150px;font-size:14px;padding:11px 18px}
   .brand{display:none}
   .chip{padding:6px 11px;font-size:12px}
+}
+/* phone landscape: full-screen world, drawer chat, one-line HUD */
+@media (pointer:coarse) and (orientation:landscape) and (max-height:540px){
+  #stage{inset:0 !important;height:auto !important;top:0 !important}
+  #side{position:fixed;top:0 !important;bottom:0 !important;right:0 !important;left:auto !important;width:min(340px,46vw) !important;height:auto !important;border-left:1px solid var(--line);border-top:0;border-radius:16px 0 0 16px;padding:0 env(safe-area-inset-right) 62px 0;transform:translateX(105%);transition:transform .25s;z-index:6}
+  #side.open{transform:none}
+  #cf{position:fixed;left:50% !important;right:auto !important;top:auto !important;bottom:calc(8px + env(safe-area-inset-bottom)) !important;transform:translateX(-50%);width:auto !important;height:auto !important;padding:0 !important;background:none;border:0;gap:8px;z-index:7}
+  #cf #sheetBtn{display:grid;place-items:center;cursor:pointer;width:44px;height:40px;padding:0;background:rgba(14,15,18,.82);border:1px solid rgba(255,255,255,.12);border-radius:12px;font-size:18px;position:relative}
+  #cf #phraseBtn{flex:none;height:40px;line-height:40px;padding:0 16px;font-size:13px;border-radius:12px}
+  #hud{flex-wrap:nowrap;overflow-x:auto;top:calc(6px + var(--st));left:0;right:0;padding:0 max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left));gap:6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #hud::-webkit-scrollbar{display:none}
+  #hud .chip{flex:none;white-space:nowrap;padding:5px 10px;font-size:11.5px}
+  #hud .brand,#zone,#help,#mini{display:none}
+  #emotes{left:auto;right:max(10px,env(safe-area-inset-right));top:50%;bottom:auto;transform:translateY(-42%);flex-direction:column;border-radius:22px;padding:4px}
+  #emotes button{width:34px;height:34px;font-size:18px}
+  #joy{display:block;left:max(20px,env(safe-area-inset-left));bottom:calc(14px + env(safe-area-inset-bottom));width:110px;height:110px}
+  #actBtn{bottom:calc(58px + env(safe-area-inset-bottom));font-size:13px;padding:9px 16px}
+  #toast{top:calc(44px + var(--st));font-size:12.5px;padding:7px 14px}
+  #raceHud{transform:translateX(-50%) scale(.85);transform-origin:top center;top:calc(44px + var(--st))}
 }
 </style>
 </head>
@@ -623,7 +642,7 @@ const PAV={x:1200,y:-560},CAMP={x:-1200,y:700},MILL={x:2500,y:2620},PARK={x0:366
 const TRAILS=[[[-100,750],[-500,700],[-900,820],[-1200,700]],[[-1200,700],[-1500,480],[-1580,80],[-1430,-360],[-1000,-540],[-400,-620],[400,-620],[1200,-560]],
   [[-900,820],[-960,1300],[-900,1700],[-900,2300],[-700,2640]],[[820,-260],[950,-420],[1200,-560]],[[1590,2400],[1900,2620],[2500,2740]]];
 const ROADS=[[-2400,712,2520,76],[2280,712,2520,76],[790,-260,60,260],[1560,1500,60,1280],[2450,150,1800,60],[2450,1290,1800,60],[2950,150,60,1200],[3600,150,60,1200]];
-const NO_TREE=[[-60,-60,2520,1620],[2440,120,1840,1260],[PAV.x-220,PAV.y-220,440,720],[CAMP.x-260,CAMP.y-260,520,760],[MILL.x-200,MILL.y-200,400,700]];
+const NO_TREE=[[1280,-660,640,700],[-60,-60,2520,1620],[2440,120,1840,1260],[PAV.x-220,PAV.y-220,440,720],[CAMP.x-260,CAMP.y-260,520,760],[MILL.x-200,MILL.y-200,400,700]];
 let towerAnims=[],fireFX=null,millBlades=null,waterTex=null,waterMat=null,groundMesh=null;
 const segD=(px,py,a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;let t=l?((px-a[0])*dx+(py-a[1])*dy)/l:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-a[0]-t*dx,py-a[1]-t*dy);};
 const nearTrail=(x,y,m)=>TRAILS.some(t=>t.some((p,i)=>i<t.length-1&&segD(x,y,p,t[i+1])<m));
@@ -636,7 +655,7 @@ const TOWERS=[
 function towerAt(x,y){for(const t of TOWERS){if(x<t.x0||x>t.x1||y<t.y0||y>t.y1)continue;
   if(x<=t.cx+t.S&&y<=t.cy+t.S)return {t,h:t.H,deck:true};
   if(x>=t.cx+t.S){const yy=y-(t.cy-t.S);return {t,h:yy<=t.W?t.H:Math.max(0,t.H*(1-(yy-t.W)/(t.L-t.W))),deck:yy<=t.W};}}return null;}
-function regionName(x,y){{const tw=towerAt(x,y);if(tw&&tw.h>0)return tw.deck?`🗼 ${tw.t.name} 꼭대기`:`🪜 ${tw.t.name} 계단`;}
+function regionName(x,y){if(x>1320&&x<1880&&y>-640&&y<-90)return '📢 스크린 광장';{const tw=towerAt(x,y);if(tw&&tw.h>0)return tw.deck?`🗼 ${tw.t.name} 꼭대기`:`🪜 ${tw.t.name} 계단`;}
   if(Math.hypot(x-PAV.x,y-PAV.y)<260)return '산마루 정자';if(Math.hypot(x-CAMP.x,y-CAMP.y)<300)return '숲속 캠프파이어';
   if(Math.hypot(x-MILL.x,y-MILL.y)<350)return '풍차 언덕';if(x>PARK.x0&&x<PARK.x1&&y>PARK.y0&&y<PARK.y1)return '동네 공원';
   const rd=riverDist(x,y);if(rd<RIVER_HW+40)return onBridge(x,y)?'강 위 다리':'강가';if(x<-2150||x>4560||y<-1150||y>3080)return '강 건너 숲';
@@ -746,7 +765,7 @@ function buildExpansion(){
   instanced(new THREE.ConeGeometry(1,1,7),M('#ffffff',{flatShading:true}),mt);
   // rolling hills in the north
   const hills=[];for(let k=0;k<60&&hills.length<14;k++){const x=-1500+rnd()*5400,y=-760+rnd()*640,Rr=120+rnd()*110;
-    if(nearTrail(x,y,Rr+90)||TOWERS.some(t=>x>t.x0-Rr-60&&x<t.x1+Rr+60&&y>t.y0-Rr-60&&y<t.y1+Rr+60)||roadDist(x,y)<Rr+70||riverDist(x,y)<Rr+160||x>2400&&y>40||ROADS.some(r=>inR(x,y,r,Rr+60))||Math.hypot(x-PAV.x,y-PAV.y)<Rr+260||y>-120)continue;
+    if(nearTrail(x,y,Rr+90)||inR(x,y,[1280,-660,640,700],Rr+40)||TOWERS.some(t=>x>t.x0-Rr-60&&x<t.x1+Rr+60&&y>t.y0-Rr-60&&y<t.y1+Rr+60)||roadDist(x,y)<Rr+70||riverDist(x,y)<Rr+160||x>2400&&y>40||ROADS.some(r=>inR(x,y,r,Rr+60))||Math.hypot(x-PAV.x,y-PAV.y)<Rr+260||y>-120)continue;
     hills.push({x:U(x),y:0,z:U(y),sx:U(Rr),sy:2.6+rnd()*3,sz:U(Rr),c:rnd()<.5?'#7fae67':'#8fbc74'});oc(x,y,Rr*.88);}
   instanced(new THREE.SphereGeometry(1,14,8,0,Math.PI*2,0,Math.PI/2),M('#ffffff',{flatShading:true}),hills);
   // edge tree lines + forest + scattered
@@ -1136,7 +1155,7 @@ bgmPaint();
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{if(joined&&bgmOn&&bgmMain.paused)bgmStart();},{passive:true}));
 document.addEventListener('visibilitychange',()=>{if(document.hidden){bgmMain.pause();bgmHall.pause();}else if(joined&&bgmOn){bgmStart();}});
 $('#camBtn').onclick=()=>{camMode=camMode==='third'?'top':'third';zoomF=camMode==='third'?1.25:(MOBILE?1.45:1.4);try{localStorage.setItem('mbworld.cam',camMode);}catch(e){}toast(camMode==='third'?'🎥 가까이 보기':'🗺️ 위에서 보기');};
-const DESTS=[['🏛️ MB 홀',1200,520],['⛲ MB 광장',1200,890],['📢 전광판',1420,760],['🚗 드라이브 스테이션',2170,680],['🚘 쇼룸',440,600],['🔧 MB 서비스센터',440,1000],['☕ MB 카페',1950,1000],['🏎️ 테스트 트랙',1200,1080],['🔥 숲속 캠프파이어',-1200,840],['⛰️ 산마루 정자',1200,-440],['🏘️ 햇살 주택가',2700,750],['🛝 동네 공원',3950,1060],['🌉 북쪽 강다리',1235,-1000],['🏁 그랑프리 출발선',GP.x,GP.y-ROAD_HW-110],...TOWERS.map(t=>['🗼 '+t.name,t.cx+t.S+t.W/2,t.cy-t.S+t.L+45]),['🌼 풍차 언덕',2500,2770]];
+const DESTS=[['🏛️ MB 홀',1200,520],['⛲ MB 광장',1200,890],['📢 스크린 광장',1600,-130],['🚗 드라이브 스테이션',2170,680],['🚘 쇼룸',440,600],['🔧 MB 서비스센터',440,1000],['☕ MB 카페',1950,1000],['🏎️ 테스트 트랙',1200,1080],['🔥 숲속 캠프파이어',-1200,840],['⛰️ 산마루 정자',1200,-440],['🏘️ 햇살 주택가',2700,750],['🛝 동네 공원',3950,1060],['🌉 북쪽 강다리',1235,-1000],['🏁 그랑프리 출발선',GP.x,GP.y-ROAD_HW-110],...TOWERS.map(t=>['🗼 '+t.name,t.cx+t.S+t.W/2,t.cy-t.S+t.L+45]),['🌼 풍차 언덕',2500,2770]];
 function teleport(x,y){for(let i=0;i<80;i++){const a=Math.random()*6.28,d=i===0?0:20+i*4,nx=x+Math.cos(a)*d,ny=y+Math.sin(a)*d;if(!hits(nx,ny)&&!inWater(nx,ny)){me.x=nx;me.y=ny;target=null;me.sit=false;push(true);camPos.set(U(nx),12,U(ny)+16);return true;}}return false;}
 $('#travelBtn').onclick=()=>{if(!joined||race.on)return;$('#act').classList.remove('hide');actOpen={id:'travel'};const b=actShell('🚩 어디로 갈까요?','누르면 바로 이동해요. 천천히 걸어가도 좋아요 🚶');
   const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px';
@@ -1185,7 +1204,7 @@ function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className
 const fmtT=ms=>ms?(ms/1000).toFixed(2)+'초':'-';
 
 /* ---------- 전광판 (LED billboard) ---------- */
-const BB={x:1420,y:560,w:360,y0:2.6};let bbScreen=null,bbFrame=0;let NEWS=[],bbCv=null,bbG=null,bbTex=null,bbT=0,bbI=0,bbSeen='';
+const BB={x:1600,y:-520,w:380,y0:2.6};let bbScreen=null,bbFrame=0;let NEWS=[],bbCv=null,bbG=null,bbTex=null,bbT=0,bbI=0,bbSeen='';
 const NEWS_DEFAULT=[{id:'w',t:'MB World에 오신 걸 환영해요',d:'천천히 걷고, 쉬고, 인사 나누고 가세요 ☕'}];
 const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:'';
 function setNews(items){NEWS=(Array.isArray(items)?items:[]).filter(n=>n&&n.t).slice(0,6).map(n=>({id:String(n.id||''),t:String(n.t).slice(0,40),d:String(n.d||'').slice(0,80),u:safeUrl(n.u)}));bbI=0;bbT=0;
@@ -1199,7 +1218,10 @@ function buildBillboard(){const{x,y,w,y0}=BB,h=Math.round(w*9/16);BB.h=h;
   bbTex=new THREE.CanvasTexture(bbCv);bbTex.encoding=THREE.sRGBEncoding;bbTex.anisotropy=renderer.capabilities.getMaxAnisotropy();
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(U(w),U(h)),new THREE.MeshBasicMaterial({map:bbTex,toneMapped:false}));scr.position.set(U(x),y0+U(h)/2,U(y)+.31);scene.add(scr);bbScreen=scr;
   const back=new THREE.Mesh(new THREE.PlaneGeometry(U(w),U(h)),M('#2a2d34'));back.rotation.y=Math.PI;back.position.set(U(x),y0+U(h)/2,U(y)-.31);scene.add(back);
-  const gl=new THREE.PointLight('#5fd0ff',.9,20,2);gl.position.set(U(x),y0+3,U(y)+4);scene.add(gl);drawBillboard(0);}
+  const gl=new THREE.PointLight('#5fd0ff',.9,20,2);gl.position.set(U(x),y0+3,U(y)+4);
+  B(x-260,y+30,520,330,.04,'#d9d3c7',{cast:false});for(let i=0;i<5;i++)B(x-250+i*104,y+30,2,330,.045,'#c4bdb0',{cast:false});
+  for(const [bx,by] of [[x-150,y+230],[x,y+230],[x+150,y+230],[x-75,y+300],[x+75,y+300]]){B(bx-40,by-9,80,18,.12,'#8b6a4a',{y0:.42,obst:true});B(bx-36,by-7,6,14,.42,'#3b3f46');B(bx+30,by-7,6,14,.42,'#3b3f46');}
+  for(const sx of [-1,1]){CY(x+sx*250,y+340,5,3.2,'#2e3238',{seg:8,obst:true});add(new THREE.SphereGeometry(.28,12,8),new THREE.MeshBasicMaterial({color:'#fff3c4',toneMapped:false}),U(x+sx*250),3.3,U(y+340),{cast:false});}scene.add(gl);drawBillboard(0);}
 function drawBillboard(dt){if(!bbG)return;bbT+=dt;const list=bbList();if(bbT>(list[bbI%list.length].go?12:9)){bbT=0;bbI=(bbI+1)%list.length;}const n=list[bbI%list.length];
   const g=bbG,RW=bbCv.width,RH=bbCv.height;if(n.go){drawGoSlide(g,RW,RH,bbI%list.length,list.length);return;}bbKey=null;const sc=RW/1024,W2=1024,H2=RH/sc;g.setTransform(sc,0,0,sc,0,0);g.fillStyle='#05070a';g.fillRect(0,0,W2,H2);
   g.fillStyle='#00adef';g.fillRect(0,0,W2,78);g.fillStyle='#001018';g.font='900 46px "Noto Sans KR", sans-serif';g.textBaseline='middle';g.fillText('📢  MB NEWS',28,41);
@@ -1280,7 +1302,7 @@ const SPOTS=[
   {id:'lap2',x:GP.x,y:GP.y-ROAD_HW-70,icon:'🏁',label:'MB 그랑프리 출발선'},
   {id:'wish',x:1200,y:864,icon:'🪙',label:'분수에 오늘의 다짐'},
   {id:'coffee',x:1810,y:1064,icon:'☕',label:'커피 한 잔'},
-  {id:'news',x:1420,y:660,icon:'📢',label:'전광판 소식 보기'},
+  {id:'news',x:1600,y:-420,icon:'📢',label:'전광판 소식 보기'},
   {id:'drive',x:2170,y:640,icon:'🚗',label:'드라이브 (세단·오토바이)'},
 ];
 function buildSpots(){for(const s of SPOTS){
@@ -1878,7 +1900,7 @@ function step(now){
   topZ+=((meAv&&meAv.onTop?1.55:1)-topZ)*Math.min(1,dt*3);const zF=zoomF*topZ;
   const want=camMode==='third'?new THREE.Vector3(fx,5.2*zF+.8+camFloor,fz+10.8*zF):new THREE.Vector3(fx,16*zF+camFloor,fz+15*zF);
   if(camMode==='third')look.set(fx,1.9+camFloor,fz-3.2);else look.set(fx,.8+camFloor,fz);
-  {let tg=0;if(camMode==='third'&&BB.h&&joined){const dx=Math.abs(me.x-BB.x),dy=me.y-BB.y;if(dx<BB.w*.8&&dy>60&&dy<620)tg=Math.min(1,(BB.w*.8-dx)/90)*Math.min(1,(dy-60)/60)*Math.min(1,(620-dy)/120);}
+  {let tg=0;if(camMode==='third'&&BB.h&&joined){const dx=Math.abs(me.x-BB.x),dy=me.y-BB.y;const zz=zoneAt(me.x,me.y);if(!(zz&&!zz.open)&&dx<BB.w*.8&&dy>60&&dy<600)tg=Math.min(1,(BB.w*.8-dx)/90)*Math.min(1,(dy-60)/60)*Math.min(1,(600-dy)/120);}
    bbFrame+=(tg-bbFrame)*Math.min(1,dt*2.5);if(bbFrame>.01){const cy=BB.y0+U(BB.h)/2,cx=U(BB.x),D=MOBILE?U(BB.w)*1.35:U(BB.w)*1.2;
      want.lerp(new THREE.Vector3(fx*.55+cx*.45,cy-.6,U(BB.y)+D),bbFrame);look.lerp(new THREE.Vector3(fx*.35+cx*.65,cy,U(BB.y)),bbFrame);}}
   camPos.lerp(want,1-Math.exp(-dt*5));camera.position.copy(camPos);
