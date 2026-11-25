@@ -1900,9 +1900,12 @@ function step(now){
   topZ+=((meAv&&meAv.onTop?1.55:1)-topZ)*Math.min(1,dt*3);const zF=zoomF*topZ;
   const want=camMode==='third'?new THREE.Vector3(fx,5.2*zF+.8+camFloor,fz+10.8*zF):new THREE.Vector3(fx,16*zF+camFloor,fz+15*zF);
   if(camMode==='third')look.set(fx,1.9+camFloor,fz-3.2);else look.set(fx,.8+camFloor,fz);
-  {let tg=0;if(camMode==='third'&&BB.h&&joined){const dx=Math.abs(me.x-BB.x),dy=me.y-BB.y;const zz=zoneAt(me.x,me.y);if(!(zz&&!zz.open)&&dx<BB.w*.8&&dy>60&&dy<600)tg=Math.min(1,(BB.w*.8-dx)/90)*Math.min(1,(dy-60)/60)*Math.min(1,(600-dy)/120);}
-   bbFrame+=(tg-bbFrame)*Math.min(1,dt*2.5);if(bbFrame>.01){const cy=BB.y0+U(BB.h)/2,cx=U(BB.x),D=MOBILE?U(BB.w)*1.35:U(BB.w)*1.2;
-     want.lerp(new THREE.Vector3(fx*.55+cx*.45,cy-.6,U(BB.y)+D),bbFrame);look.lerp(new THREE.Vector3(fx*.35+cx*.65,cy,U(BB.y)),bbFrame);}}
+  {let tg=0;if(camMode==='third'&&BB.h&&joined){const dx=Math.abs(me.x-BB.x),dy=me.y-BB.y,zz=zoneAt(me.x,me.y);
+     if(!(zz&&!zz.open)&&dx<BB.w*.85&&dy>-20&&dy<620)tg=Math.min(1,(BB.w*.85-dx)/80)*Math.min(1,(620-dy)/120);}
+   bbFrame+=(tg-bbFrame)*Math.min(1,dt*2.5);if(bbFrame>.01){const cyc=BB.y0+U(BB.h)/2,cx=U(BB.x),Ws=U(BB.w)+.6,Hs=U(BB.h)+.6;
+     const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect);
+     let D=Math.max((Hs/2)*1.18/Math.tan(vf),(Ws/2)*1.08/Math.tan(hf))*Math.max(.6,zoomF);D=Math.min(D,U(70-BB.y)-1.2);
+     want.lerp(new THREE.Vector3(cx+(fx-cx)*.12,cyc+.4,U(BB.y)+D),bbFrame);look.lerp(new THREE.Vector3(cx,cyc+Hs*.05,U(BB.y)),bbFrame);}}
   camPos.lerp(want,1-Math.exp(-dt*5));camera.position.copy(camPos);
 camLook.lerp(look,1-Math.exp(-dt*7));camera.lookAt(camLook);
   }
