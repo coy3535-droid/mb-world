@@ -1209,7 +1209,7 @@ function drawBillboard(dt){if(!bbG)return;bbT+=dt;const list=bbList();if(bbT>(li
   g.fillStyle='#e9ebef';g.font='500 40px "Noto Sans KR", sans-serif';g.fillText(n.d||'',30,262);g.restore();
   g.fillStyle=n.u?'#3ddc84':'#9aa0aa';g.font='700 34px "Noto Sans KR", sans-serif';g.fillText(n.u?'▶ 앞의 📢 표시에 가까이 가서 눌러 링크 열기':'▶ 앞의 📢 표시에서 자세히 보기',30,H2-38);
   g.globalAlpha=.10;g.fillStyle='#000';for(let yy=0;yy<H2;yy+=4)g.fillRect(0,yy,W2,1.2);g.globalAlpha=1;g.setTransform(1,0,0,1,0,0);bbTex.needsUpdate=true;}
-function openNews(){$('#act').classList.remove('hide');actOpen={id:'news'};const list=NEWS.length?NEWS:NEWS_DEFAULT;
+function openNews(){$('#act').classList.remove('hide');actOpen={id:'news'};const list=NEWS.length?NEWS:(goStage?[]:NEWS_DEFAULT.slice(-1));
   try{localStorage.setItem('mbworld.news',NEWS.map(n=>n.id).join(','));}catch(e){}
   const b=actShell('📢 MB 전광판','지점장님들께 전하는 소식과 재밌는 정보예요.');goCard(b);
   for(const n of list){const card=el('div');card.style.cssText='background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px;margin-top:10px;text-align:left';
@@ -1227,7 +1227,7 @@ function setGo610(v){const n=Math.max(0,Math.min(4,v|0));const up=n>goStage&&joi
   if(up&&!(st.g610&(1<<(n-1))))toast(`🏔️ Go 610 · ${G610[n-1].t} 도착! 전광판에서 확인하고 +10P 받아요`);
   if(actOpen&&actOpen.id==='news')openNews();}
 const gearN=()=>{let c=0,b=st.g610|0;while(b){c+=b&1;b>>=1;}return Math.min(4,c);};
-function bbList(){const base=NEWS.length?NEWS:NEWS_DEFAULT;return goStage>0?[{go:goStage},...base]:base;}
+function bbList(){if(goStage>0)return [{go:goStage},...NEWS];return NEWS.length?NEWS:NEWS_DEFAULT.slice(-1);}
 let bbKey=null;
 function drawGoSlide(g,RW,RH,idx,len){const c=G610[goStage-1],im=goImg[c.k],done=st.g610&(1<<(goStage-1));
   const key=[goStage,!!done,idx,len,!!(im&&im.ok)].join('|');if(key===bbKey)return;bbKey=key;
