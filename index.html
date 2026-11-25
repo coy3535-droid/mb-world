@@ -1223,7 +1223,7 @@ function openNews(){$('#act').classList.remove('hide');actOpen={id:'news'};const
 const G610=[{k:'camp1',t:'CAMP 1',s:'The climb begins',gear:'🔦 헤드랜턴'},{k:'camp2',t:'CAMP 2',s:'Hold the rope',gear:'🪢 등반 로프'},{k:'camp3',t:'CAMP 3',s:'The last ridge',gear:'⛏️ 아이스액스'},{k:'summit',t:'SUMMIT',s:'We made it together',gear:'🚩 Summit 610 깃발'}];
 let goStage=0;const goImg={};
 function setGo610(v){const n=Math.max(0,Math.min(4,v|0));const up=n>goStage&&joined;goStage=n;bbI=0;bbT=0;
-  for(let i=0;i<n;i++){const k=G610[i].k;if(!goImg[k]){const im=new Image();im.onload=()=>{im.ok=true;};im.src='/go610/'+k+'.jpg';goImg[k]=im;}}
+  for(let i=0;i<n;i++){const k=G610[i].k;if(!goImg[k]){const im=new Image();im.onload=()=>{im.ok=true;};im.src='/go610/'+k+'.jpg?v=f61e0667';goImg[k]=im;}}
   if(up&&!(st.g610&(1<<(n-1))))toast(`🏔️ Go 610 · ${G610[n-1].t} 도착! 전광판에서 확인하고 +10P 받아요`);
   if(actOpen&&actOpen.id==='news')openNews();}
 const gearN=()=>{let c=0,b=st.g610|0;while(b){c+=b&1;b>>=1;}return Math.min(4,c);};

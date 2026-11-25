@@ -197,7 +197,7 @@ const server = http.createServer((req, res) => {
     fs.stat(f, (err, st) => {
       if (err) { res.writeHead(404); res.end(); return; }
       const range = req.headers.range;
-      const base = { 'content-type': STATIC[urlPath], 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=3600' };
+      const base = { 'content-type': STATIC[urlPath], 'accept-ranges': 'bytes', 'cache-control': urlPath.startsWith('/go610/') ? 'no-cache' : 'public, max-age=3600', 'last-modified': st.mtime.toUTCString() };
       if (range) {
         const m = /bytes=(\d*)-(\d*)/.exec(range) || [];
         let start = m[1] ? parseInt(m[1], 10) : 0, end = m[2] ? parseInt(m[2], 10) : st.size - 1;
