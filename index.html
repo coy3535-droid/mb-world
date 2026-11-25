@@ -1186,7 +1186,7 @@ const fmtT=ms=>ms?(ms/1000).toFixed(2)+'초':'-';
 
 /* ---------- 전광판 (LED billboard) ---------- */
 const BB={x:1420,y:560,w:360,y0:2.6};let bbScreen=null,bbFrame=0;let NEWS=[],bbCv=null,bbG=null,bbTex=null,bbT=0,bbI=0,bbSeen='';
-const NEWS_DEFAULT=[{id:'rp343514',t:'Retail Platform 새 소식',d:'Mercedes-Benz Retail Platform에 올라온 소식이에요 (사내 계정 로그인)',u:'https://retail-platform.i.mercedes-benz.com/news/343514'},{id:'w',t:'MB World에 오신 걸 환영해요',d:'천천히 걷고, 쉬고, 인사 나누고 가세요 ☕'}];
+const NEWS_DEFAULT=[{id:'w',t:'MB World에 오신 걸 환영해요',d:'천천히 걷고, 쉬고, 인사 나누고 가세요 ☕'}];
 const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:'';
 function setNews(items){NEWS=(Array.isArray(items)?items:[]).filter(n=>n&&n.t).slice(0,6).map(n=>({id:String(n.id||''),t:String(n.t).slice(0,40),d:String(n.d||'').slice(0,80),u:safeUrl(n.u)}));bbI=0;bbT=0;
   const sig=NEWS.map(n=>n.id).join(',');if(sig&&sig!==bbSeen){let last='';try{last=localStorage.getItem('mbworld.news')||'';}catch(e){}if(last!==sig&&joined)toast('📢 전광판에 새 소식이 올라왔어요');}bbSeen=sig;
