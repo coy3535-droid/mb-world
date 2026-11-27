@@ -1135,25 +1135,31 @@ function submitProfile(){
   renderLog();cv.focus();}
 $('#enter').onclick=()=>{submitProfile();if(joined)bgmStart();};$('#jCancel').onclick=()=>$('#join').classList.add('hide');
 $('#jn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#jp').focus();});$('#jp').addEventListener('keydown',e=>{if(e.key==='Enter')submitProfile();});$('#jc').addEventListener('keydown',e=>{if(e.key==='Enter')submitProfile();});
-const bgmMain=new Audio('bgm.mp3'),bgmHall=new Audio('hall.mp3');
-for(const a of [bgmMain,bgmHall]){a.loop=true;a.preload='auto';a.crossOrigin='anonymous';}
+/* ---------- BGM: time + Seoul weather ---------- */
+const BGM_SRC={morning:'bgm_morning.mp3',sunny:'bgm_sunny.mp3',rainy:'bgm_rainy.mp3',evening:'bgm.mp3',hall:'hall.mp3'};
+const BGM_NAME={morning:'☕ Morning Brew at MB World',sunny:'🌤️ Sunny at MB World',rainy:'🌧️ Rainy at MB World',evening:'🌙 Wave – Jazz Pop Flight',hall:'🧘 MB 홀'};
+const BGA={};function bga(k){if(!BGA[k]){const a=new Audio(BGM_SRC[k]);a.loop=true;a.preload='auto';a.crossOrigin='anonymous';BGA[k]={a,g:null,v:0};}return BGA[k];}
+function pickOut(){const h=new Date(Date.now()+9*3600e3).getUTCHours(),wk=(()=>{try{return WX?wxKind(WX.code):'clear';}catch(e){return 'clear';}})();
+  if(wk==='rain'||wk==='storm'||wk==='fog')return 'rainy';if(h>=5&&h<11)return 'morning';if(h>=11&&h<18)return (wk==='snow'||wk==='cloudy')?'morning':'sunny';return 'evening';}
+let outKey=pickOut();bga(outKey);bga('hall');
 let bgmOn=true;try{bgmOn=localStorage.getItem('mbworld.bgm')!=='off';}catch(e){}
-let bgmTarget=.32,bgmG=null,bgmMaster=1,bgmMasterGoal=1;
-function bgmPaint(){$('#bgmBtn').textContent=bgmOn?'🔊':'🔇';}
-function bgmGraph(){if(bgmG)return true;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
-    const mk=a=>{const src=AC.createMediaElementSource(a),g=AC.createGain();g.gain.value=0;src.connect(g).connect(AC.destination);return g;};
-    bgmG={main:mk(bgmMain),hall:mk(bgmHall)};return true;}catch(e){bgmG=null;return false;}}
-function bgmStart(){if(!bgmOn)return;bgmGraph();try{if(AC&&AC.state==='suspended')AC.resume();}catch(e){}
-  for(const a of [bgmMain,bgmHall]){const pr=a.play();if(pr&&pr.catch)pr.catch(()=>{});}bgmMasterGoal=1;}
-function bgmStop(){bgmMasterGoal=0;setTimeout(()=>{if(bgmMasterGoal===0){bgmMain.pause();bgmHall.pause();}},700);}
-function bgmTick(dt,inHall){dt=Math.max(0,dt);const k=Math.min(1,dt*1.6);bgmMaster+=(bgmMasterGoal-bgmMaster)*Math.min(1,dt*3);
-  const raceDuck=bgmTarget<.2;if(!isFinite(bgmMaster))bgmMaster=1;const vMain=(inHall?0:bgmTarget)*bgmMaster,vHall=(inHall?(raceDuck?.08:.42):0)*bgmMaster;
-  if(bgmG){const t=AC.currentTime;bgmG.main.gain.setTargetAtTime(vMain,t,.6);bgmG.hall.gain.setTargetAtTime(vHall,t,.6);}
-  else{const cl=v=>Math.max(0,Math.min(1,v||0));try{bgmMain.volume=cl(bgmMain.volume+(vMain-bgmMain.volume)*k);bgmHall.volume=cl(bgmHall.volume+(vHall-bgmHall.volume)*k);}catch(e){}}}
-$('#bgmBtn').onclick=()=>{bgmOn=!bgmOn;try{localStorage.setItem('mbworld.bgm',bgmOn?'on':'off');}catch(e){}bgmPaint();if(bgmOn)bgmStart();else bgmStop();toast(bgmOn?'🎵 배경음악 켜짐':'🔇 배경음악 꺼짐');};
-bgmPaint();
-['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{if(joined&&bgmOn&&bgmMain.paused)bgmStart();},{passive:true}));
-document.addEventListener('visibilitychange',()=>{if(document.hidden){bgmMain.pause();bgmHall.pause();}else if(joined&&bgmOn){bgmStart();}});
+let bgmTarget=.32,bgmMaster=1,bgmMasterGoal=1,bgmWA=true;
+function bgmPaint(){$('#bgmBtn').textContent=bgmOn?'🔊':'🔇';$('#bgmBtn').title=bgmOn?'지금 재생: '+BGM_NAME[outKey]:'배경음악 꺼짐';}
+function bgmGraph(){if(!bgmWA)return false;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    for(const k in BGA){const t=BGA[k];if(!t.g){const src=AC.createMediaElementSource(t.a),g=AC.createGain();g.gain.value=0;src.connect(g).connect(AC.destination);t.g=g;}}return true;}catch(e){bgmWA=false;return false;}}
+function bgmPlay(k){const t=bga(k);bgmGraph();const pr=t.a.play();if(pr&&pr.catch)pr.catch(()=>{});}
+function bgmStart(){if(!bgmOn)return;bgmGraph();try{if(AC&&AC.state==='suspended')AC.resume();}catch(e){}bgmPlay(outKey);bgmPlay('hall');bgmMasterGoal=1;}
+function bgmStop(){bgmMasterGoal=0;setTimeout(()=>{if(bgmMasterGoal===0)for(const k in BGA)BGA[k].a.pause();},700);}
+function bgmCheck(announce){const k=pickOut();if(k===outKey)return;outKey=k;bgmPaint();if(joined&&bgmOn){bgmPlay(k);if(announce)toast('🎵 지금 흐르는 곡: '+BGM_NAME[k]);}}
+function bgmTick(dt,inHall){dt=Math.max(0,dt);const kk=Math.min(1,dt*.9);bgmMaster+=(bgmMasterGoal-bgmMaster)*Math.min(1,dt*3);if(!isFinite(bgmMaster))bgmMaster=1;
+  const raceDuck=bgmTarget<.2;const vOut=(inHall?0:bgmTarget)*bgmMaster,vHall=(inHall?(raceDuck?.08:.42):0)*bgmMaster;
+  for(const k in BGA){const t=BGA[k],tg=k==='hall'?vHall:(k===outKey?vOut:0);t.v+=(tg-t.v)*kk;
+    if(t.g){t.g.gain.setTargetAtTime(tg,AC.currentTime,1.2);}else{try{t.a.volume=Math.max(0,Math.min(1,t.v));}catch(e){}}
+    if(k!=='hall'&&k!==outKey&&t.v<.005&&!t.a.paused)t.a.pause();}}
+$('#bgmBtn').onclick=()=>{bgmOn=!bgmOn;try{localStorage.setItem('mbworld.bgm',bgmOn?'on':'off');}catch(e){}bgmPaint();if(bgmOn)bgmStart();else bgmStop();toast(bgmOn?'🎵 '+BGM_NAME[outKey]:'🔇 배경음악 꺼짐');};
+bgmPaint();setInterval(()=>bgmCheck(true),30000);
+['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{if(joined&&bgmOn&&bga(outKey).a.paused)bgmStart();},{passive:true}));
+document.addEventListener('visibilitychange',()=>{if(document.hidden){for(const k in BGA)BGA[k].a.pause();}else if(joined&&bgmOn){bgmStart();}});
 $('#camBtn').onclick=()=>{camMode=camMode==='third'?'top':'third';zoomF=camMode==='third'?1.25:(MOBILE?1.45:1.4);try{localStorage.setItem('mbworld.cam',camMode);}catch(e){}toast(camMode==='third'?'🎥 가까이 보기':'🗺️ 위에서 보기');};
 const DESTS=[['🏛️ MB 홀',1200,520],['⛲ MB 광장',1200,890],['📢 스크린 광장',1600,-130],['🚗 드라이브 스테이션',2170,680],['🚘 쇼룸',440,600],['🔧 MB 서비스센터',440,1000],['☕ MB 카페',1950,1000],['🏎️ 테스트 트랙',1200,1080],['🔥 숲속 캠프파이어',-1200,840],['⛰️ 산마루 정자',1200,-440],['🏘️ 햇살 주택가',2700,750],['🛝 동네 공원',3950,1060],['🌉 북쪽 강다리',1235,-1000],['🏁 그랑프리 출발선',GP.x,GP.y-ROAD_HW-110],...TOWERS.map(t=>['🗼 '+t.name,t.cx+t.S+t.W/2,t.cy-t.S+t.L+45]),['🌼 풍차 언덕',2500,2770]];
 function teleport(x,y){for(let i=0;i<80;i++){const a=Math.random()*6.28,d=i===0?0:20+i*4,nx=x+Math.cos(a)*d,ny=y+Math.sin(a)*d;if(!hits(nx,ny)&&!inWater(nx,ny)){me.x=nx;me.y=ny;target=null;me.sit=false;push(true);camPos.set(U(nx),12,U(ny)+16);return true;}}return false;}
@@ -1630,7 +1636,7 @@ const WXP={
   storm:{n:'뇌우',e:'⛈️',sky:['#4f5964','#7c858e','#9ba1a6'],fog:'#8d959c',near:.5,far:.6,sun:.25,hemi:.6,exp:.66,p:'rain',storm:true}};
 let WX=null,WXF={near:1,far:1},wxFx=null,wxFlash=0,wxNext=0;
 const wxKind=c=>c==null?'clear':c<=0?'clear':c<=2?'partly':c===3?'cloudy':(c===45||c===48)?'fog':((c>=71&&c<=77)||c===85||c===86)?'snow':c>=95?'storm':c>=51?'rain':'clear';
-function applyWeather(w){if(!w||w.code==null)return;WX=w;const k=wxKind(w.code),P=WXP[k];WXF={near:P.near,far:P.far,storm:!!P.storm,hemi:P.hemi,exp:P.exp};
+function applyWeather(w){if(!w||w.code==null)return;WX=w;setTimeout(()=>bgmCheck(true),0);const k=wxKind(w.code),P=WXP[k];WXF={near:P.near,far:P.far,storm:!!P.storm,hemi:P.hemi,exp:P.exp};
   setSky(...P.sky);scene.fog.color.set(P.fog);sun.intensity=P.sun;hemi.intensity=P.hemi;renderer.toneMappingExposure=P.exp;
   if(waterMat)waterMat.color.set(k==='rain'||k==='storm'?'#b9c6cf':'#ffffff');
   if(groundMesh)groundMesh.material.color.set(k==='snow'?'#f2f5f7':'#ffffff');
@@ -1958,7 +1964,7 @@ Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(bui
 requestAnimationFrame(step);
 if(MODE==='artifact')initArtifact();else if(MODE==='ws')initWS();else{setConn(false,'혼자 둘러보는 중');statsReady(null);}
 renderLog();
-if(/[?&]debug\b/.test(location.search))window.__mb={get cam(){return camera},get bbF(){return bbFrame},openNews,gearN,bbList,get goStage(){return goStage},get goImg(){return goImg},get bbCv(){return bbCv},gain,applySkin,me,get meAv(){return meAv},openAct,race,driveEnter,get TRS(){return TRS},get st(){return st},raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
+if(/[?&]debug\b/.test(location.search))window.__mb={applyWeather,get outKey(){return outKey},pickOut,bgmCheck,get BGA(){return BGA},get cam(){return camera},get bbF(){return bbFrame},openNews,gearN,bbList,get goStage(){return goStage},get goImg(){return goImg},get bbCv(){return bbCv},gain,applySkin,me,get meAv(){return meAv},openAct,race,driveEnter,get TRS(){return TRS},get st(){return st},raceEnter,ROAD_LEN,ROAD_HW,f1car,sedanCar,bike3,THREE,drop,dropJump,TOWERS,floorY,RECTS,CIRC,applyWeather,ROAD_PTS,RIVER_PTS,densify,inWater,riverDist,get meAv(){return meAv},raceEnter,keys,hits,teleport,DESTS,regionName,get st(){return st;},get fade(){return [FADE.length,fadeHits.size,camMode,camera.position.toArray().map(v=>+v.toFixed(1))];}};
 })();
 </script>
 </body>

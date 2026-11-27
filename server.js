@@ -190,7 +190,7 @@ const server = http.createServer((req, res) => {
     }
     adminPage(req).then(h => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); res.end(h); }); return;
   }
-  const STATIC = { '/go610/camp1.jpg': 'image/jpeg', '/go610/camp2.jpg': 'image/jpeg', '/go610/camp3.jpg': 'image/jpeg', '/go610/summit.jpg': 'image/jpeg', '/bgm.mp3': 'audio/mpeg', '/hall.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json' };
+  const STATIC = { '/go610/camp1.jpg': 'image/jpeg', '/go610/camp2.jpg': 'image/jpeg', '/go610/camp3.jpg': 'image/jpeg', '/go610/summit.jpg': 'image/jpeg', '/bgm.mp3': 'audio/mpeg', '/bgm_morning.mp3': 'audio/mpeg', '/bgm_sunny.mp3': 'audio/mpeg', '/bgm_rainy.mp3': 'audio/mpeg', '/hall.mp3': 'audio/mpeg', '/hall.glb': 'model/gltf-binary', '/hall_props_lm.jpg': 'image/jpeg', '/hall_floor_lm.jpg': 'image/jpeg', '/hall_bake.json': 'application/json' };
   const urlPath = req.url.split('?')[0];
   if (STATIC[urlPath]) {
     const f = path.join(__dirname, urlPath.slice(1));
